@@ -74,15 +74,18 @@ export default function RegisterPage() {
       if (typeof window !== "undefined") {
         localStorage.setItem("mech_mania_attempt_id", data.attempt.id);
         localStorage.setItem("mech_mania_participant_id", data.participant.participant_id);
+        if (data.session_token) {
+          localStorage.setItem("mech_mania_session_token", data.session_token);
+        }
       }
 
       if (data.recovered) {
         setRecoveredNotice("Active mission identified! Resuming your operational status...");
         setTimeout(() => {
-          router.push("/play");
-        }, 1200);
+          window.location.href = "/play";
+        }, 1000);
       } else {
-        router.push("/play");
+        window.location.href = "/play";
       }
     } catch (err) {
       console.error("Registration error:", err);

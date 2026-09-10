@@ -3,17 +3,33 @@ import { GameStore } from "@/lib/db/store";
 import { EVENT_CONFIG } from "@/config/event";
 import { getSafeQuestion } from "@/data/questions";
 import { SubmitAnswerResponse } from "@/types/game";
+import { createSessionToken, verifySessionToken } from "@/lib/session-token";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { attempt_id, question_id, selected_option, time_spent } = body;
+    const { attempt_id, question_id, selected_option, time_spent, session_token } = body;
+    const token = req.headers.get("x-session-token") || session_token;
 
     if (!attempt_id || !question_id || selected_option === undefined) {
       return NextResponse.json({ error: "Missing required submission parameters." }, { status: 400 });
     }
 
-    const attempt = await GameStore.getAttemptById(attempt_id);
+    let attempt = await GameStore.getAttemptById(attempt_id);
+    let participant = attempt ? await GameStore.getParticipantById(attempt.participant_id) : null;
+
+    // Serverless fallback hydration
+    if ((!attempt || !participant) && token) {
+      const verified = verifySessionToken(token);
+      if (verified) {
+        participant = verified.participant;
+        attempt = verified.attempt;
+        GameStore.hydrateFromSession(participant, attempt);
+      }
+    }
+
     if (!attempt) {
       return NextResponse.json({ error: "Attempt not found." }, { status: 404 });
     }
@@ -139,7 +155,6 @@ export async function POST(req: NextRequest) {
       const startedAt = new Date(attempt.started_at).getTime();
       totalTime = Math.max(1, Math.floor((Date.now() - startedAt) / 1000));
       
-      // Calculate accuracy
       const correctAnswersCount = isCorrect ? Math.round((attempt.accuracy / 100) * currentIndex) + 1 : Math.round((attempt.accuracy / 100) * currentIndex);
       finalAccuracy = Number(((correctAnswersCount / attempt.question_ids.length) * 100).toFixed(1));
 
@@ -157,7 +172,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Update attempt in store
-    await GameStore.updateAttempt(attempt.id, {
+    const updatedAttempt = await GameStore.updateAttempt(attempt.id, {
       score: newScore,
       accuracy: finalAccuracy,
       total_time: totalTime,
@@ -182,7 +197,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const responsePayload: SubmitAnswerResponse = {
+    // Generate updated session token
+    let updatedToken = token;
+    if (participant && updatedAttempt) {
+      updatedToken = createSessionToken(participant, updatedAttempt);
+    }
+
+    const responsePayload = {
       is_correct: isCorrect,
       correct_option: question.correct_answer,
       points_earned: pointsEarned,
@@ -198,6 +219,7 @@ export async function POST(req: NextRequest) {
       level_completed: levelCompletedData,
       quiz_completed: isQuizFinished,
       final_summary: finalSummary,
+      session_token: updatedToken,
     };
 
     return NextResponse.json(responsePayload);

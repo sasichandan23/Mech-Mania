@@ -10,8 +10,10 @@ import { QUESTION_BANK } from "@/data/questions";
 import { isSupabaseConfigured, supabaseServer } from "./supabase";
 import fs from "fs";
 import path from "path";
+import os from "os";
+import { randomUUID } from "crypto";
 
-// Local state fallback storage for instant zero-dependency execution
+// Local state fallback storage using writable tmp directory in serverless environments
 interface LocalDbState {
   participants: Record<string, Participant>;
   attempts: Record<string, Attempt>;
@@ -20,7 +22,8 @@ interface LocalDbState {
   counter: number;
 }
 
-const LOCAL_DB_FILE = path.join(process.cwd(), ".mech_mania_local_db.json");
+// In serverless (Vercel / AWS Lambda), os.tmpdir() is the only guaranteed writable directory
+const LOCAL_DB_FILE = path.join(os.tmpdir(), "mech_mania_local_db.json");
 
 function loadLocalState(): LocalDbState {
   try {
@@ -29,7 +32,7 @@ function loadLocalState(): LocalDbState {
       return JSON.parse(data);
     }
   } catch (e) {
-    console.warn("Could not read local DB file, using memory store:", e);
+    console.warn("Could not read local DB file from tmp, using memory store:", e);
   }
   return {
     participants: {},
@@ -44,11 +47,12 @@ function saveLocalState(state: LocalDbState) {
   try {
     fs.writeFileSync(LOCAL_DB_FILE, JSON.stringify(state, null, 2), "utf-8");
   } catch (e) {
-    console.warn("Could not write to local DB file:", e);
+    // Non-fatal warning if serverless filesystem is restricted
+    console.warn("Could not write to local DB file in tmp:", e);
   }
 }
 
-// In-memory singleton cache
+// In-memory singleton cache per worker
 let localStateCache: LocalDbState | null = null;
 function getLocalState(): LocalDbState {
   if (!localStateCache) {
@@ -58,18 +62,29 @@ function getLocalState(): LocalDbState {
 }
 
 export class GameStore {
+  // Hydrate state from a verified session token (vital for serverless lambda instances)
+  static hydrateFromSession(participant: Participant, attempt: Attempt) {
+    const state = getLocalState();
+    state.participants[participant.id] = participant;
+    state.attempts[attempt.id] = attempt;
+    saveLocalState(state);
+  }
+
   // 1. Participant Management
   static async findParticipantByRegisterNumber(regNo: string): Promise<Participant | null> {
     const normalized = regNo.trim().toUpperCase();
 
     if (isSupabaseConfigured && supabaseServer) {
-      const { data, error } = await supabaseServer
-        .from("participants")
-        .select("*")
-        .eq("register_number", normalized)
-        .maybeSingle();
-      if (error) console.error("Supabase findParticipant error:", error);
-      return data || null;
+      try {
+        const { data, error } = await supabaseServer
+          .from("participants")
+          .select("*")
+          .eq("register_number", normalized)
+          .maybeSingle();
+        if (!error && data) return data;
+      } catch (e) {
+        console.error("Supabase findParticipant error:", e);
+      }
     }
 
     const state = getLocalState();
@@ -82,13 +97,16 @@ export class GameStore {
     const normalized = email.trim().toLowerCase();
 
     if (isSupabaseConfigured && supabaseServer) {
-      const { data, error } = await supabaseServer
-        .from("participants")
-        .select("*")
-        .eq("email", normalized)
-        .maybeSingle();
-      if (error) console.error("Supabase findByEmail error:", error);
-      return data || null;
+      try {
+        const { data, error } = await supabaseServer
+          .from("participants")
+          .select("*")
+          .eq("email", normalized)
+          .maybeSingle();
+        if (!error && data) return data;
+      } catch (e) {
+        console.error("Supabase findByEmail error:", e);
+      }
     }
 
     const state = getLocalState();
@@ -99,13 +117,16 @@ export class GameStore {
 
   static async getParticipantById(id: string): Promise<Participant | null> {
     if (isSupabaseConfigured && supabaseServer) {
-      const { data, error } = await supabaseServer
-        .from("participants")
-        .select("*")
-        .eq("id", id)
-        .maybeSingle();
-      if (error) console.error("Supabase getParticipantById error:", error);
-      return data || null;
+      try {
+        const { data, error } = await supabaseServer
+          .from("participants")
+          .select("*")
+          .eq("id", id)
+          .maybeSingle();
+        if (!error && data) return data;
+      } catch (e) {
+        console.error("Supabase getParticipantById error:", e);
+      }
     }
 
     const state = getLocalState();
@@ -123,7 +144,7 @@ export class GameStore {
     const nextNumber = state.counter;
     state.counter += 1;
     const participant_id = `MM2026-${String(nextNumber).padStart(5, "0")}`;
-    const id = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `p-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const id = randomUUID();
     const created_at = new Date().toISOString();
 
     const participant: Participant = {
@@ -138,16 +159,19 @@ export class GameStore {
     };
 
     if (isSupabaseConfigured && supabaseServer) {
-      const { data: inserted, error } = await supabaseServer
-        .from("participants")
-        .insert([participant])
-        .select()
-        .single();
-      if (error) {
+      try {
+        const { data: inserted, error } = await supabaseServer
+          .from("participants")
+          .insert([participant])
+          .select()
+          .single();
+        if (!error && inserted) {
+          state.participants[inserted.id] = inserted;
+          return inserted;
+        }
         console.error("Supabase insert participant error:", error);
-        // Fall back to local state
-      } else {
-        return inserted;
+      } catch (e) {
+        console.error("Supabase participant insert exception:", e);
       }
     }
 
@@ -159,13 +183,16 @@ export class GameStore {
   // 2. Attempt Management
   static async getAttemptById(attemptId: string): Promise<Attempt | null> {
     if (isSupabaseConfigured && supabaseServer) {
-      const { data, error } = await supabaseServer
-        .from("attempts")
-        .select("*")
-        .eq("id", attemptId)
-        .maybeSingle();
-      if (error) console.error("Supabase getAttemptById error:", error);
-      if (data) return data;
+      try {
+        const { data, error } = await supabaseServer
+          .from("attempts")
+          .select("*")
+          .eq("id", attemptId)
+          .maybeSingle();
+        if (!error && data) return data;
+      } catch (e) {
+        console.error("Supabase getAttemptById error:", e);
+      }
     }
 
     const state = getLocalState();
@@ -174,13 +201,16 @@ export class GameStore {
 
   static async getAttemptByParticipantId(participantId: string): Promise<Attempt | null> {
     if (isSupabaseConfigured && supabaseServer) {
-      const { data, error } = await supabaseServer
-        .from("attempts")
-        .select("*")
-        .eq("participant_id", participantId)
-        .maybeSingle();
-      if (error) console.error("Supabase getAttemptByParticipantId error:", error);
-      if (data) return data;
+      try {
+        const { data, error } = await supabaseServer
+          .from("attempts")
+          .select("*")
+          .eq("participant_id", participantId)
+          .maybeSingle();
+        if (!error && data) return data;
+      } catch (e) {
+        console.error("Supabase getAttemptByParticipantId error:", e);
+      }
     }
 
     const state = getLocalState();
@@ -194,7 +224,7 @@ export class GameStore {
     question_ids: string[];
     initial_power_ups: PowerUpInventory;
   }): Promise<Attempt> {
-    const id = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `att-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const id = randomUUID();
     const started_at = new Date().toISOString();
 
     const attempt: Attempt = {
@@ -217,15 +247,20 @@ export class GameStore {
     };
 
     if (isSupabaseConfigured && supabaseServer) {
-      const { data: inserted, error } = await supabaseServer
-        .from("attempts")
-        .insert([attempt])
-        .select()
-        .single();
-      if (error) {
+      try {
+        const { data: inserted, error } = await supabaseServer
+          .from("attempts")
+          .insert([attempt])
+          .select()
+          .single();
+        if (!error && inserted) {
+          const state = getLocalState();
+          state.attempts[inserted.id] = inserted;
+          return inserted;
+        }
         console.error("Supabase insert attempt error:", error);
-      } else {
-        return inserted;
+      } catch (e) {
+        console.error("Supabase attempt insert exception:", e);
       }
     }
 
@@ -237,38 +272,48 @@ export class GameStore {
 
   static async updateAttempt(attemptId: string, updates: Partial<Attempt>): Promise<Attempt | null> {
     if (isSupabaseConfigured && supabaseServer) {
-      const { data, error } = await supabaseServer
-        .from("attempts")
-        .update(updates)
-        .eq("id", attemptId)
-        .select()
-        .single();
-      if (error) {
-        console.error("Supabase updateAttempt error:", error);
-      } else {
-        return data;
+      try {
+        const { data, error } = await supabaseServer
+          .from("attempts")
+          .update(updates)
+          .eq("id", attemptId)
+          .select()
+          .single();
+        if (!error && data) {
+          const state = getLocalState();
+          state.attempts[attemptId] = data;
+          return data;
+        }
+      } catch (e) {
+        console.error("Supabase updateAttempt error:", e);
       }
     }
 
     const state = getLocalState();
-    if (!state.attempts[attemptId]) return null;
-
-    state.attempts[attemptId] = {
-      ...state.attempts[attemptId],
-      ...updates,
-    };
+    if (!state.attempts[attemptId]) {
+      // If not yet in cache, create a baseline entry with the updates
+      state.attempts[attemptId] = updates as Attempt;
+    } else {
+      state.attempts[attemptId] = {
+        ...state.attempts[attemptId],
+        ...updates,
+      };
+    }
     saveLocalState(state);
     return state.attempts[attemptId];
   }
 
   // 3. Answers & Audit
   static async recordAnswer(answer: Omit<AnswerRecord, "id">): Promise<void> {
-    const id = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `ans-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const id = randomUUID();
     const fullAnswer: AnswerRecord = { id, ...answer };
 
     if (isSupabaseConfigured && supabaseServer) {
-      const { error } = await supabaseServer.from("answers").insert([fullAnswer]);
-      if (error) console.error("Supabase recordAnswer error:", error);
+      try {
+        await supabaseServer.from("answers").insert([fullAnswer]);
+      } catch (e) {
+        console.error("Supabase recordAnswer error:", e);
+      }
     }
 
     const state = getLocalState();
@@ -278,14 +323,18 @@ export class GameStore {
 
   static async recordPowerUpUsage(attemptId: string, powerUp: string): Promise<void> {
     const record = {
-      id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `pu-${Date.now()}`,
+      id: randomUUID(),
       attempt_id: attemptId,
       power_up_type: powerUp,
       used_at: new Date().toISOString(),
     };
 
     if (isSupabaseConfigured && supabaseServer) {
-      await supabaseServer.from("power_up_usage").insert([record]);
+      try {
+        await supabaseServer.from("power_up_usage").insert([record]);
+      } catch (e) {
+        console.error("Supabase recordPowerUp error:", e);
+      }
     }
 
     const state = getLocalState();
@@ -296,19 +345,23 @@ export class GameStore {
   // 4. Leaderboard Calculation
   static async getLeaderboard(): Promise<LeaderboardEntry[]> {
     if (isSupabaseConfigured && supabaseServer) {
-      const { data, error } = await supabaseServer
-        .from("leaderboard_view")
-        .select("*")
-        .limit(100);
-      if (!error && data && data.length > 0) {
-        return data;
+      try {
+        const { data, error } = await supabaseServer
+          .from("leaderboard_view")
+          .select("*")
+          .limit(100);
+        if (!error && data && data.length > 0) {
+          return data;
+        }
+      } catch (e) {
+        console.error("Supabase leaderboard query error:", e);
       }
     }
 
     // Fallback calculation from local state
     const state = getLocalState();
     const completedAttempts = Object.values(state.attempts).filter(
-      (a) => a.status === "completed"
+      (a) => a && a.status === "completed"
     );
 
     // Sort by Score DESC, Accuracy DESC, Total Time ASC
@@ -319,7 +372,7 @@ export class GameStore {
     });
 
     return completedAttempts.map((att, index) => {
-      const p = state.participants[att.participant_id] || {
+      const p = (att.participant_id && state.participants[att.participant_id]) || {
         participant_id: "MM2026-????",
         name: "Anonymous Engineer",
         department: "Mechanical",

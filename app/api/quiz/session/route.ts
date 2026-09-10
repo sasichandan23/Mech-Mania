@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { GameStore } from "@/lib/db/store";
 import { getSafeQuestion } from "@/data/questions";
 import { EVENT_CONFIG } from "@/config/event";
+import { verifySessionToken } from "@/lib/session-token";
 
 export const dynamic = "force-dynamic";
 
@@ -9,19 +10,23 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const attemptId = searchParams.get("attempt_id");
+    const token = req.headers.get("x-session-token") || searchParams.get("token");
 
-    if (!attemptId) {
-      return NextResponse.json({ error: "Missing attempt_id parameter." }, { status: 400 });
+    let attempt = attemptId ? await GameStore.getAttemptById(attemptId) : null;
+    let participant = attempt ? await GameStore.getParticipantById(attempt.participant_id) : null;
+
+    // If serverless lambda cold-started or memory cache was purged, recover from verified session token
+    if ((!attempt || !participant) && token) {
+      const verified = verifySessionToken(token);
+      if (verified) {
+        participant = verified.participant;
+        attempt = verified.attempt;
+        GameStore.hydrateFromSession(participant, attempt);
+      }
     }
 
-    const attempt = await GameStore.getAttemptById(attemptId);
-    if (!attempt) {
+    if (!attempt || !participant) {
       return NextResponse.json({ error: "Session not found. Please register." }, { status: 404 });
-    }
-
-    const participant = await GameStore.getParticipantById(attempt.participant_id);
-    if (!participant) {
-      return NextResponse.json({ error: "Participant record not found." }, { status: 404 });
     }
 
     // Check if already completed

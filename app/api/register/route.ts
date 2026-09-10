@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { GameStore } from "@/lib/db/store";
 import { EVENT_CONFIG } from "@/config/event";
 import { generateAttemptQuestions } from "@/data/questions";
+import { createSessionToken } from "@/lib/session-token";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
@@ -59,11 +62,13 @@ export async function POST(req: NextRequest) {
           }, { status: 409 });
         } else {
           // Recover active attempt
+          const sessionToken = createSessionToken(existing, attempt);
           return NextResponse.json({
             message: "Active session found! Resuming your mission...",
             recovered: true,
             participant: existing,
             attempt,
+            session_token: sessionToken,
           });
         }
       }
@@ -88,11 +93,14 @@ export async function POST(req: NextRequest) {
       initial_power_ups: { ...EVENT_CONFIG.INITIAL_POWER_UPS },
     });
 
+    const sessionToken = createSessionToken(participant, attempt);
+
     return NextResponse.json({
       success: true,
       message: "Registration successful! Prepare for engine start.",
       participant,
       attempt,
+      session_token: sessionToken,
     });
   } catch (error) {
     console.error("Registration error:", error);

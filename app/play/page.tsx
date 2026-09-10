@@ -75,19 +75,28 @@ export default function PlayPage() {
   // 1. Initial Session Load / Recovery
   useEffect(() => {
     const attemptId = localStorage.getItem("mech_mania_attempt_id");
-    if (!attemptId) {
-      router.push("/register");
+    const sessionToken = localStorage.getItem("mech_mania_session_token") || "";
+
+    if (!attemptId && !sessionToken) {
+      window.location.href = "/register";
       return;
     }
 
     async function loadSession() {
       try {
-        const res = await fetch(`/api/quiz/session?attempt_id=${attemptId}`);
+        const res = await fetch(`/api/quiz/session?attempt_id=${attemptId || ""}`, {
+          headers: {
+            "x-session-token": sessionToken,
+          },
+        });
         const data = await res.json();
 
         if (!res.ok || !data.attempt) {
-          localStorage.removeItem("mech_mania_attempt_id");
-          router.push("/register");
+          console.error("Session fetch failed:", data);
+          // Only redirect if explicitly 404 and no token was present
+          if (!sessionToken) {
+            window.location.href = "/register";
+          }
           return;
         }
 
@@ -119,7 +128,6 @@ export default function PlayPage() {
         }
       } catch (err) {
         console.error("Error loading session:", err);
-        router.push("/register");
       }
     }
 
@@ -135,25 +143,35 @@ export default function PlayPage() {
 
     const timeSpent = Math.max(1, Math.floor((Date.now() - questionStartTimeRef.current) / 1000));
 
+    const sessionToken = typeof window !== "undefined" ? localStorage.getItem("mech_mania_session_token") || "" : "";
+
     try {
       const res = await fetch("/api/quiz/submit-answer", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "x-session-token": sessionToken,
+        },
         body: JSON.stringify({
           attempt_id: attempt.id,
           question_id: currentQuestion.id,
           selected_option: optionIndex,
           time_spent: timeSpent,
+          session_token: sessionToken,
         }),
       });
 
-      const data: SubmitAnswerResponse = await res.json();
+      const data: SubmitAnswerResponse & { session_token?: string } = await res.json();
 
       if (!res.ok) {
         console.error("Submission failed:", data);
         setIsSubmitting(false);
         submissionInProgressRef.current = false;
         return;
+      }
+
+      if (data.session_token && typeof window !== "undefined") {
+        localStorage.setItem("mech_mania_session_token", data.session_token);
       }
 
       // Show immediate feedback
@@ -284,14 +302,20 @@ export default function PlayPage() {
   const handleUsePowerUp = async (type: PowerUpType) => {
     if (!attempt || !currentQuestion || isSubmitting || isAnswerSubmitted) return;
 
+    const sessionToken = typeof window !== "undefined" ? localStorage.getItem("mech_mania_session_token") || "" : "";
+
     try {
       const res = await fetch("/api/quiz/power-up", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "x-session-token": sessionToken,
+        },
         body: JSON.stringify({
           attempt_id: attempt.id,
           power_up: type,
           current_question_id: currentQuestion.id,
+          session_token: sessionToken,
         }),
       });
 
@@ -299,6 +323,10 @@ export default function PlayPage() {
       if (!res.ok) {
         console.warn("Power-up failed:", data.error);
         return;
+      }
+
+      if (data.session_token && typeof window !== "undefined") {
+        localStorage.setItem("mech_mania_session_token", data.session_token);
       }
 
       // Update remaining inventory

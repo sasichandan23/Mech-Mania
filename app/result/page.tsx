@@ -52,7 +52,12 @@ export default function ResultPage() {
     // Fetch session details & leaderboard rank
     async function fetchResultData() {
       try {
-        const sessionRes = await fetch(`/api/quiz/session?attempt_id=${attemptId}`);
+        const sessionToken = typeof window !== "undefined" ? localStorage.getItem("mech_mania_session_token") || "" : "";
+        const sessionRes = await fetch(`/api/quiz/session?attempt_id=${attemptId}`, {
+          headers: {
+            "x-session-token": sessionToken,
+          },
+        });
         const sessionData = await sessionRes.json();
 
         if (sessionData.participant && sessionData.attempt) {
