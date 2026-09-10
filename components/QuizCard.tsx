@@ -58,22 +58,22 @@ export default function QuizCard({
         isBossLevel
           ? "border-red-500/80 shadow-red-950/40 shadow-2xl"
           : "border-mech-border shadow-2xl"
-      } p-5 sm:p-7 backdrop-blur-xl relative overflow-hidden transition-all`}
+      } p-4 sm:p-7 backdrop-blur-xl relative overflow-hidden transition-all`}
     >
       {/* Top Banner: Category & Difficulty */}
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4 border-b border-mech-border/60 pb-3">
         <div className="flex items-center gap-2">
-          <span className="px-2.5 py-1 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-xs uppercase font-bold tracking-wider">
+          <span className="px-2.5 py-1 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-[10px] sm:text-xs uppercase font-bold tracking-wider">
             {question.category}
           </span>
-          <span className="text-[11px] font-mono text-slate-400 uppercase">
+          <span className="text-[10px] sm:text-[11px] font-mono text-slate-400 uppercase">
             {question.question_type.replace("_", " ")}
           </span>
         </div>
 
         <div className="flex items-center gap-2">
           <span
-            className={`px-2 py-0.5 rounded text-xs font-mono font-bold uppercase ${
+            className={`px-2 py-0.5 rounded text-[10px] sm:text-xs font-mono font-bold uppercase ${
               question.difficulty === "easy"
                 ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                 : question.difficulty === "medium"
@@ -85,7 +85,7 @@ export default function QuizCard({
           >
             {question.difficulty}
           </span>
-          <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-xs font-mono text-amber-300 font-bold">
+          <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-[10px] sm:text-xs font-mono text-amber-300 font-bold">
             +{question.points} XP
           </span>
         </div>
@@ -93,12 +93,12 @@ export default function QuizCard({
 
       {/* Schematic Diagram if available */}
       {question.schematic_svg && (
-        <div className="mb-5 p-4 rounded-xl bg-slate-950/80 border border-mech-border flex flex-col items-center justify-center relative">
+        <div className="mb-4 sm:mb-5 p-3 sm:p-4 rounded-xl bg-slate-950/80 border border-mech-border flex flex-col items-center justify-center relative overflow-hidden">
           <div className="absolute top-2 left-2 text-[9px] font-mono text-slate-500 uppercase tracking-widest">
             ENGINEERING SCHEMATIC
           </div>
           <div
-            className="w-full flex justify-center py-2"
+            className="w-full flex justify-center py-2 overflow-x-auto [&>svg]:max-w-full [&>svg]:h-auto"
             dangerouslySetInnerHTML={{ __html: question.schematic_svg }}
           />
         </div>
@@ -137,7 +137,7 @@ export default function QuizCard({
                 sounds.playClick();
                 onSelectOption(index);
               }}
-              className={`w-full text-left p-3.5 sm:p-4 rounded-xl border transition-all duration-200 flex items-center justify-between group active:scale-[0.99] ${optionStyle}`}
+              className={`w-full text-left min-h-[52px] p-3 sm:p-4 rounded-xl border transition-all duration-150 flex items-center justify-between group active:scale-[0.98] ${optionStyle}`}
             >
               <div className="flex items-center gap-3.5 sm:gap-4">
                 <span

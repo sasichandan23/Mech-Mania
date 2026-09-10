@@ -160,10 +160,12 @@ export default function RegisterPage() {
                 type="text"
                 name="name"
                 required
+                autoCapitalize="words"
+                autoComplete="name"
                 placeholder="e.g. Johnathan Vance"
                 value={formData.name}
                 onChange={handleChange}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-sm text-slate-100 placeholder-slate-600 outline-none transition-all"
+                className="w-full pl-10 pr-4 py-3 sm:py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-base sm:text-sm text-slate-100 placeholder-slate-600 outline-none transition-all"
               />
             </div>
           </div>
@@ -179,10 +181,13 @@ export default function RegisterPage() {
                 type="text"
                 name="register_number"
                 required
+                autoCapitalize="characters"
+                autoCorrect="off"
+                spellCheck={false}
                 placeholder="e.g. 23ME1045"
                 value={formData.register_number}
                 onChange={handleChange}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-sm font-mono text-slate-100 placeholder-slate-600 outline-none transition-all uppercase"
+                className="w-full pl-10 pr-4 py-3 sm:py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-base sm:text-sm font-mono text-slate-100 placeholder-slate-600 outline-none transition-all uppercase"
               />
             </div>
             <span className="text-[10px] font-mono text-slate-500 mt-1 block">
@@ -202,7 +207,7 @@ export default function RegisterPage() {
                   name="department"
                   value={formData.department}
                   onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-xs text-slate-200 outline-none transition-all cursor-pointer"
+                  className="w-full pl-10 pr-4 py-3 sm:py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-base sm:text-xs text-slate-200 outline-none transition-all cursor-pointer"
                 >
                   {departments.map((dept) => (
                     <option key={dept} value={dept} className="bg-slate-900 text-slate-100">
@@ -223,7 +228,7 @@ export default function RegisterPage() {
                   name="year"
                   value={formData.year}
                   onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-xs text-slate-200 outline-none transition-all cursor-pointer"
+                  className="w-full pl-10 pr-4 py-3 sm:py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-base sm:text-xs text-slate-200 outline-none transition-all cursor-pointer"
                 >
                   {years.map((yr) => (
                     <option key={yr} value={yr} className="bg-slate-900 text-slate-100">
@@ -246,10 +251,15 @@ export default function RegisterPage() {
                 type="email"
                 name="email"
                 required
+                inputMode="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                autoComplete="email"
                 placeholder="e.g. pilot@college.edu"
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-sm text-slate-100 placeholder-slate-600 outline-none transition-all"
+                className="w-full pl-10 pr-4 py-3 sm:py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-base sm:text-sm text-slate-100 placeholder-slate-600 outline-none transition-all"
               />
             </div>
           </div>

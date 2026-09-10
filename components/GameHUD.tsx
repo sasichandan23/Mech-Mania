@@ -58,14 +58,14 @@ export default function GameHUD({
           <div className="w-8 h-8 rounded bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-bold font-mono text-xs">
             {participantId.split("-")[1] || "PILOT"}
           </div>
-          <div>
-            <div className="text-sm font-bold text-slate-200 tracking-wide flex items-center gap-1.5">
-              <span>{playerName}</span>
-              <span className="text-[10px] font-mono text-slate-500">[{participantId}]</span>
+          <div className="min-w-0 flex-1">
+            <div className="text-xs sm:text-sm font-bold text-slate-200 tracking-wide flex items-center gap-1.5">
+              <span className="truncate max-w-[110px] sm:max-w-[200px]">{playerName}</span>
+              <span className="text-[9px] sm:text-[10px] font-mono text-slate-500 shrink-0">[{participantId}]</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mt-0.5">
               <span
-                className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded font-bold ${
+                className={`text-[9px] sm:text-[10px] font-mono uppercase px-1.5 sm:px-2 py-0.5 rounded font-bold ${
                   isBossLevel
                     ? "bg-red-500/20 text-red-400 border border-red-500/50 animate-pulse"
                     : "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
@@ -197,16 +197,16 @@ export default function GameHUD({
 
       {/* Active Buff Indicators (2X XP, Shield) */}
       {(activeDoubleXP || activeShield) && (
-        <div className="flex items-center gap-2 pt-1">
+        <div className="flex flex-wrap items-center gap-1.5 pt-1">
           {activeDoubleXP && (
-            <div className="px-2 py-0.5 bg-yellow-500/20 border border-yellow-500/40 rounded text-xs font-mono text-yellow-300 flex items-center gap-1 animate-pulse">
-              <Zap className="w-3.5 h-3.5 text-yellow-400" />
-              2X XP OVERDRIVE ACTIVE (NEXT CORRECT ANSWER)
+            <div className="px-2 py-0.5 bg-yellow-500/20 border border-yellow-500/40 rounded text-[10px] sm:text-xs font-mono text-yellow-300 flex items-center gap-1 animate-pulse">
+              <Zap className="w-3 h-3 text-yellow-400" />
+              2X XP ACTIVE
             </div>
           )}
           {activeShield && (
-            <div className="px-2 py-0.5 bg-cyan-500/20 border border-cyan-500/40 rounded text-xs font-mono text-cyan-300 flex items-center gap-1">
-              <Shield className="w-3.5 h-3.5 text-cyan-400" />
+            <div className="px-2 py-0.5 bg-cyan-500/20 border border-cyan-500/40 rounded text-[10px] sm:text-xs font-mono text-cyan-300 flex items-center gap-1">
+              <Shield className="w-3 h-3 text-cyan-400" />
               HEAT SHIELD CHARGED
             </div>
           )}

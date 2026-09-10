@@ -84,11 +84,26 @@ export default function ResultPage() {
     fetchResultData();
   }, [router]);
 
-  const handleShare = () => {
+  const handleShare = async () => {
     sounds.playClick();
+    const shareText = `⚙️ I just completed ${EVENT_CONFIG.EVENT_NAME} with ${attempt?.score || 0} XP! Can you beat my score in this autonomous mechanical engineering gauntlet?`;
+    const shareUrl = typeof window !== "undefined" ? window.location.origin : "";
+
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: `${EVENT_CONFIG.EVENT_NAME} Score`,
+          text: shareText,
+          url: shareUrl,
+        });
+        return;
+      } catch {
+        // Fallback to clipboard if user canceled or rejected share sheet
+      }
+    }
+
     if (typeof window !== "undefined" && navigator.clipboard) {
-      const shareText = `⚙️ I just completed ${EVENT_CONFIG.EVENT_NAME} with ${attempt?.score || 0} XP! Can you beat my score in this autonomous mechanical engineering gauntlet? ${window.location.origin}`;
-      navigator.clipboard.writeText(shareText);
+      navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2500);
     }

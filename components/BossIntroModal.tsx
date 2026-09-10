@@ -14,8 +14,8 @@ export default function BossIntroModal({ onEngageBoss }: BossIntroModalProps) {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-red-950/80 backdrop-blur-xl animate-in fade-in">
-      <div className="w-full max-w-lg bg-slate-950 border-2 border-red-500 rounded-2xl p-6 sm:p-8 shadow-2xl shadow-red-600/50 relative overflow-hidden text-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-red-950/80 backdrop-blur-xl animate-in fade-in">
+      <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto bg-slate-950 border-2 border-red-500 rounded-2xl p-5 sm:p-8 shadow-2xl shadow-red-600/50 relative text-center">
         {/* Red Hazard Stripes */}
         <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-red-600 via-amber-500 to-red-600 animate-pulse" />
 

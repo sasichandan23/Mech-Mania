@@ -7,12 +7,24 @@ export const metadata: Metadata = {
   title: `${EVENT_CONFIG.EVENT_NAME} | ${EVENT_CONFIG.TAGLINE}`,
   description: `${EVENT_CONFIG.SUBTITLE} organized by ${EVENT_CONFIG.CLUB_NAME}, ${EVENT_CONFIG.COLLEGE_NAME}.`,
   keywords: ["Mechanical Engineering", "Quiz Game", "MECH-MANIA", "CAD", "Thermodynamics", "Robotics", "Automobile"],
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: EVENT_CONFIG.EVENT_NAME,
+  },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
   themeColor: "#0a0c10",
 };
 

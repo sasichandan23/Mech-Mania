@@ -206,8 +206,8 @@ export default function CertificateModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in">
-      <div className="w-full max-w-4xl bg-slate-900 border border-mech-border rounded-2xl p-5 sm:p-6 shadow-2xl relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/90 backdrop-blur-md animate-in fade-in">
+      <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-slate-900 border border-mech-border rounded-2xl p-4 sm:p-6 shadow-2xl relative">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 mb-4 border-b border-mech-border">
           <div className="flex items-center gap-2">

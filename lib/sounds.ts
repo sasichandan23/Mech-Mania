@@ -9,6 +9,24 @@ class SoundEngine {
     if (typeof window !== "undefined") {
       const storedMute = localStorage.getItem("mech_mania_muted");
       this.isMuted = storedMute === "true";
+
+      // Mobile Safari / Chrome AudioContext gesture unlock
+      const unlock = () => {
+        this.unlockAudio();
+        window.removeEventListener("touchstart", unlock);
+        window.removeEventListener("touchend", unlock);
+        window.removeEventListener("click", unlock);
+      };
+      window.addEventListener("touchstart", unlock, { passive: true, once: true });
+      window.addEventListener("touchend", unlock, { passive: true, once: true });
+      window.addEventListener("click", unlock, { passive: true, once: true });
+    }
+  }
+
+  public unlockAudio() {
+    this.init();
+    if (this.ctx && this.ctx.state === "suspended") {
+      this.ctx.resume().catch(() => {});
     }
   }
 
@@ -20,7 +38,7 @@ class SoundEngine {
       }
     }
     if (this.ctx && this.ctx.state === "suspended") {
-      this.ctx.resume();
+      this.ctx.resume().catch(() => {});
     }
   }
 

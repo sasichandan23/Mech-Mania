@@ -29,8 +29,8 @@ export default function LevelTransitionModal({
   const nextLevelConfig = EVENT_CONFIG.LEVELS.find((l) => l.level === nextLevel);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in">
-      <div className="w-full max-w-lg bg-slate-900 border border-mech-border rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden text-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in">
+      <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto bg-slate-900 border border-mech-border rounded-2xl p-5 sm:p-8 shadow-2xl relative text-center">
         {/* Glowing Ambient */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-32 bg-amber-500/15 rounded-full blur-2xl" />
 

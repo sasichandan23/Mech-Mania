@@ -11,8 +11,8 @@ interface RulesModalProps {
 
 export default function RulesModal({ onStartEngine }: RulesModalProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in">
-      <div className="w-full max-w-2xl bg-slate-900 border border-mech-border rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in">
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 border border-mech-border rounded-2xl p-5 sm:p-8 shadow-2xl relative">
         {/* Subtle Hazard Top Stripe */}
         <div className="absolute top-0 left-0 right-0 h-1.5 hazard-stripes" />
 
