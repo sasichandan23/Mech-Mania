@@ -152,9 +152,9 @@ export default function EventInfoPage() {
           </div>
 
           <div className="p-6 rounded-2xl bg-slate-900/90 border border-mech-border space-y-3 text-left">
-            <div className="flex items-center gap-2 text-yellow-400 font-bold font-mono text-sm">
+            <div className="flex items-center gap-2 text-amber-400 font-bold font-mono text-sm">
               <Award className="w-4 h-4" />
-              <span>OFFICIAL PRIZES</span>
+              <span>OFFICIAL CERTIFICATIONS & HONORS</span>
             </div>
             <ul className="space-y-2 text-xs text-slate-300 divide-y divide-slate-800">
               {EVENT_CONFIG.PRIZES.map((p) => (

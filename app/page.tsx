@@ -171,15 +171,15 @@ export default function LandingPage() {
       <section className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-mech-border relative overflow-hidden backdrop-blur-md">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 font-mono text-xs uppercase tracking-wider mb-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-xs uppercase tracking-wider mb-2">
               <Award className="w-4 h-4" />
-              PRIZES & RECOGNITION
+              CERTIFICATIONS & RECOGNITION
             </div>
             <h2 className="text-2xl sm:text-3xl font-black text-slate-100 tracking-tight">
-              HONOR & GLORY
+              HONORS & CERTIFICATES
             </h2>
             <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-lg mx-auto">
-              Top engineers receive grand trophies, cash prizes, and verified digital credentials.
+              Top engineers receive official verified digital certificates of excellence and prestigious distinctions.
             </p>
           </div>
 
@@ -212,7 +212,7 @@ export default function LandingPage() {
           </div>
 
           <div className="text-center text-xs text-slate-400 font-mono">
-            📜 All verified participants automatically unlock an official downloadable Certificate of Participation!
+            📜 All verified participants automatically receive an official downloadable Certificate of Participation!
           </div>
         </div>
       </section>

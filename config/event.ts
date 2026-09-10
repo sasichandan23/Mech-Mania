@@ -117,12 +117,12 @@ export const EVENT_CONFIG = {
     END_TIME: "2026-09-10T21:00:00Z",
   },
 
-  // Prizes Information
+  // Certifications & Honors Information (No prize money)
   PRIZES: [
-    { rank: "1st Place", title: "Grand Champion", award: "Gold Trophy + ₹10,000 + Certificate of Excellence" },
-    { rank: "2nd Place", title: "Master Machinist", award: "Silver Trophy + ₹5,000 + Certificate of Excellence" },
-    { rank: "3rd Place", title: "Apex Engineer", award: "Bronze Trophy + ₹2,500 + Certificate of Excellence" },
-    { rank: "Top 10", title: "Elite Cadre", award: "Certificate of Merit + Club Merchandise" },
+    { rank: "1st Place", title: "Grand Champion", award: "Certificate of Excellence + Gold Distinction" },
+    { rank: "2nd Place", title: "Master Machinist", award: "Certificate of Excellence + Silver Distinction" },
+    { rank: "3rd Place", title: "Apex Engineer", award: "Certificate of Excellence + Bronze Distinction" },
+    { rank: "Top 10", title: "Elite Cadre", award: "Official Certificate of Merit" },
     { rank: "All Participants", title: "Certified Contender", award: "Official E-Certificate of Participation" },
   ],
 };
