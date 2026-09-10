@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GameStore } from "@/lib/db/store";
-import { getSafeQuestion } from "@/data/questions";
+import { getSafeQuestion, generateAttemptQuestions } from "@/data/questions";
 import { EVENT_CONFIG } from "@/config/event";
 import { verifySessionToken } from "@/lib/session-token";
 
@@ -57,6 +57,12 @@ export async function GET(req: NextRequest) {
         participant,
         attempt: { ...attempt, status: "completed", total_time: totalAllowed },
       });
+    }
+
+    // Ensure question_ids exists
+    if (!attempt.question_ids || !Array.isArray(attempt.question_ids) || attempt.question_ids.length === 0) {
+      console.warn("Attempt question_ids missing in session route, regenerating array...");
+      attempt.question_ids = generateAttemptQuestions();
     }
 
     // Get current question

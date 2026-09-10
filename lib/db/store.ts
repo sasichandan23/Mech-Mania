@@ -290,15 +290,11 @@ export class GameStore {
     }
 
     const state = getLocalState();
-    if (!state.attempts[attemptId]) {
-      // If not yet in cache, create a baseline entry with the updates
-      state.attempts[attemptId] = updates as Attempt;
-    } else {
-      state.attempts[attemptId] = {
-        ...state.attempts[attemptId],
-        ...updates,
-      };
-    }
+    const existing = state.attempts[attemptId] || ({} as Partial<Attempt>);
+    state.attempts[attemptId] = {
+      ...existing,
+      ...updates,
+    } as Attempt;
     saveLocalState(state);
     return state.attempts[attemptId];
   }

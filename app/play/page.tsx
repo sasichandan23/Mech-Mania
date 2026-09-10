@@ -71,6 +71,21 @@ export default function PlayPage() {
   // Refs for timers and submission guard
   const questionStartTimeRef = useRef<number>(Date.now());
   const submissionInProgressRef = useRef<boolean>(false);
+  const isTimingOutRef = useRef<boolean>(false);
+  const currentQuestionRef = useRef<ClientQuestion | null>(null);
+  const attemptRef = useRef<Attempt | null>(null);
+
+  useEffect(() => {
+    currentQuestionRef.current = currentQuestion;
+    if (currentQuestion?.id) {
+      isTimingOutRef.current = false;
+      submissionInProgressRef.current = false;
+    }
+  }, [currentQuestion]);
+
+  useEffect(() => {
+    attemptRef.current = attempt;
+  }, [attempt]);
 
   // 1. Initial Session Load / Recovery
   useEffect(() => {
@@ -136,7 +151,10 @@ export default function PlayPage() {
 
   // Submit Answer Handler
   const handleSubmitAnswer = useCallback(async (optionIndex: number) => {
-    if (submissionInProgressRef.current || !attempt || !currentQuestion) return;
+    const currentAtt = attemptRef.current || attempt;
+    const currentQ = currentQuestionRef.current || currentQuestion;
+
+    if (submissionInProgressRef.current || !currentAtt || !currentQ) return;
     submissionInProgressRef.current = true;
     setIsSubmitting(true);
     setSelectedOption(optionIndex);
@@ -153,8 +171,8 @@ export default function PlayPage() {
           "x-session-token": sessionToken,
         },
         body: JSON.stringify({
-          attempt_id: attempt.id,
-          question_id: currentQuestion.id,
+          attempt_id: currentAtt.id,
+          question_id: currentQ.id,
           selected_option: optionIndex,
           time_spent: timeSpent,
           session_token: sessionToken,
@@ -165,9 +183,13 @@ export default function PlayPage() {
 
       if (!res.ok) {
         console.error("Submission failed:", data);
+        setIsSubmitting(false);
+        submissionInProgressRef.current = false;
+        isTimingOutRef.current = false;
+
         // Self-Healing: If desynchronization occurs, immediately resync state with server
         try {
-          const syncRes = await fetch(`/api/quiz/session?attempt_id=${attempt.id}`, {
+          const syncRes = await fetch(`/api/quiz/session?attempt_id=${currentAtt.id}`, {
             headers: { "x-session-token": sessionToken },
           });
           const syncData = await syncRes.json();
@@ -184,9 +206,6 @@ export default function PlayPage() {
         } catch (syncErr) {
           console.error("Self-healing sync failed:", syncErr);
         }
-
-        setIsSubmitting(false);
-        submissionInProgressRef.current = false;
         return;
       }
 
@@ -236,6 +255,7 @@ export default function PlayPage() {
         setEliminatedOptions([]);
         setIsSubmitting(false);
         submissionInProgressRef.current = false;
+        isTimingOutRef.current = false;
 
         // Check if Quiz Complete
         if (data.quiz_completed) {
@@ -286,6 +306,7 @@ export default function PlayPage() {
       console.error("Submission network error:", err);
       setIsSubmitting(false);
       submissionInProgressRef.current = false;
+      isTimingOutRef.current = false;
     }
   }, [attempt, currentQuestion, router]);
 
@@ -316,9 +337,11 @@ export default function PlayPage() {
       setQuestionSecondsLeft((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
-          // Question timed out: auto-submit timeout (-1)
-          sounds.playWrong();
-          handleSubmitAnswer(-1);
+          if (!isTimingOutRef.current) {
+            isTimingOutRef.current = true;
+            sounds.playWrong();
+            handleSubmitAnswer(-1);
+          }
           return 0;
         }
         return prev - 1;
@@ -384,14 +407,26 @@ export default function PlayPage() {
 
   // Continue from Level Transition Modal
   const handleContinueNextLevel = () => {
-    if (!levelCompleteData || !attempt) return;
+    if (!levelCompleteData) return;
     const nextLvl = levelCompleteData.nextLevel;
     setCurrentLevel(nextLvl);
     setIsBossLevel(nextLvl === 6);
     setLevelName(nextLvl === 6 ? "FINAL BOSS: THE MECHANICAL MASTERMIND" : `LEVEL ${nextLvl}`);
-    if (currentQuestion) {
-      setQuestionSecondsLeft(currentQuestion.time_limit);
-      setQuestionTimeLimit(currentQuestion.time_limit);
+
+    // Clean interaction reset for the new round
+    isTimingOutRef.current = false;
+    submissionInProgressRef.current = false;
+    setIsSubmitting(false);
+    setIsAnswerSubmitted(false);
+    setSelectedOption(null);
+    setCorrectOptionIndex(null);
+    setExplanationText(null);
+    setEliminatedOptions([]);
+
+    const q = currentQuestionRef.current || currentQuestion;
+    if (q) {
+      setQuestionSecondsLeft(q.time_limit);
+      setQuestionTimeLimit(q.time_limit);
     }
     questionStartTimeRef.current = Date.now();
     setPhase("playing");
@@ -402,9 +437,21 @@ export default function PlayPage() {
     setCurrentLevel(6);
     setIsBossLevel(true);
     setLevelName("FINAL BOSS: THE MECHANICAL MASTERMIND");
-    if (currentQuestion) {
-      setQuestionSecondsLeft(currentQuestion.time_limit);
-      setQuestionTimeLimit(currentQuestion.time_limit);
+
+    // Clean interaction reset for the boss round
+    isTimingOutRef.current = false;
+    submissionInProgressRef.current = false;
+    setIsSubmitting(false);
+    setIsAnswerSubmitted(false);
+    setSelectedOption(null);
+    setCorrectOptionIndex(null);
+    setExplanationText(null);
+    setEliminatedOptions([]);
+
+    const q = currentQuestionRef.current || currentQuestion;
+    if (q) {
+      setQuestionSecondsLeft(q.time_limit);
+      setQuestionTimeLimit(q.time_limit);
     }
     questionStartTimeRef.current = Date.now();
     setPhase("playing");

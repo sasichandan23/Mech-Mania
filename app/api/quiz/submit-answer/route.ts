@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GameStore } from "@/lib/db/store";
 import { EVENT_CONFIG } from "@/config/event";
-import { getSafeQuestion } from "@/data/questions";
-import { SubmitAnswerResponse } from "@/types/game";
+import { getSafeQuestion, generateAttemptQuestions } from "@/data/questions";
+import { SubmitAnswerResponse, Attempt } from "@/types/game";
 import { createSessionToken, verifySessionToken } from "@/lib/session-token";
 
 export const dynamic = "force-dynamic";
@@ -38,17 +38,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Attempt has already been completed." }, { status: 400 });
     }
 
-    // Verify current question match
-    const currentIndex = attempt.current_question_index;
-    const expectedQuestionId = attempt.question_ids[currentIndex];
-    if (expectedQuestionId !== question_id) {
-      return NextResponse.json({ 
-        error: "Question synchronization mismatch. Please refresh session.",
-        sync_error: true 
-      }, { status: 409 });
+    // Ensure question_ids array exists
+    if (!attempt.question_ids || !Array.isArray(attempt.question_ids) || attempt.question_ids.length === 0) {
+      console.warn("Attempt question_ids missing, regenerating array...");
+      attempt.question_ids = generateAttemptQuestions();
     }
 
-    const question = GameStore.getQuestionById(question_id);
+    // Resolve target question
+    let question = GameStore.getQuestionById(question_id);
+    const currentIndex = attempt.current_question_index;
+    const expectedQuestionId = attempt.question_ids[currentIndex];
+
+    if (!question && expectedQuestionId) {
+      question = GameStore.getQuestionById(expectedQuestionId);
+    }
+
     if (!question) {
       return NextResponse.json({ error: "Question not found." }, { status: 500 });
     }
@@ -171,8 +175,9 @@ export async function POST(req: NextRequest) {
       finalAccuracy = Number(((correctAnswersCount / nextIndex) * 100).toFixed(1));
     }
 
-    // Update attempt in store
-    const updatedAttempt = await GameStore.updateAttempt(attempt.id, {
+    // Update attempt in store with complete merged state
+    const mergedAttempt: Attempt = {
+      ...attempt,
       score: newScore,
       accuracy: finalAccuracy,
       total_time: totalTime,
@@ -185,12 +190,14 @@ export async function POST(req: NextRequest) {
       current_level: nextLevel,
       status: isQuizFinished ? "completed" : "in_progress",
       completed_at: isQuizFinished ? new Date().toISOString() : undefined,
-    });
+    };
+
+    const updatedAttempt = await GameStore.updateAttempt(attempt.id, mergedAttempt);
 
     // Fetch next safe question if available
     let nextSafeQuestion = undefined;
     if (!isQuizFinished) {
-      const nextQId = attempt.question_ids[nextIndex];
+      const nextQId = mergedAttempt.question_ids[nextIndex];
       const rawNext = GameStore.getQuestionById(nextQId);
       if (rawNext) {
         nextSafeQuestion = getSafeQuestion(rawNext);
@@ -199,8 +206,8 @@ export async function POST(req: NextRequest) {
 
     // Generate updated session token
     let updatedToken = token;
-    if (participant && updatedAttempt) {
-      updatedToken = createSessionToken(participant, updatedAttempt);
+    if (participant) {
+      updatedToken = createSessionToken(participant, updatedAttempt || mergedAttempt);
     }
 
     const responsePayload = {

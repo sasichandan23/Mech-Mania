@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GameStore } from "@/lib/db/store";
-import { PowerUpType } from "@/types/game";
+import { PowerUpType, Attempt } from "@/types/game";
 import { createSessionToken, verifySessionToken } from "@/lib/session-token";
 
 export const dynamic = "force-dynamic";
@@ -68,18 +68,20 @@ export async function POST(req: NextRequest) {
     }
 
     // Update attempt
-    const updatedAttempt = await GameStore.updateAttempt(attempt.id, {
+    const mergedAttempt: Attempt = {
+      ...attempt,
       power_ups: inventory,
       active_shield: activeShield,
       active_double_xp: activeDoubleXP,
-    });
+    };
+    const updatedAttempt = await GameStore.updateAttempt(attempt.id, mergedAttempt);
 
     // Record audit log
     await GameStore.recordPowerUpUsage(attempt.id, power_up);
 
     let updatedToken = token;
-    if (participant && updatedAttempt) {
-      updatedToken = createSessionToken(participant, updatedAttempt);
+    if (participant) {
+      updatedToken = createSessionToken(participant, updatedAttempt || mergedAttempt);
     }
 
     return NextResponse.json({
