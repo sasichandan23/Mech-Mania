@@ -165,6 +165,26 @@ export default function PlayPage() {
 
       if (!res.ok) {
         console.error("Submission failed:", data);
+        // Self-Healing: If desynchronization occurs, immediately resync state with server
+        try {
+          const syncRes = await fetch(`/api/quiz/session?attempt_id=${attempt.id}`, {
+            headers: { "x-session-token": sessionToken },
+          });
+          const syncData = await syncRes.json();
+          if (syncData.current_question) {
+            setCurrentQuestion(syncData.current_question);
+            setQuestionNumber(syncData.current_question_number);
+            setCurrentLevel(syncData.current_level);
+            setLevelName(syncData.level_name);
+            setIsBossLevel(syncData.is_boss_level);
+            setQuestionSecondsLeft(syncData.current_question.time_limit);
+            setQuestionTimeLimit(syncData.current_question.time_limit);
+            questionStartTimeRef.current = Date.now();
+          }
+        } catch (syncErr) {
+          console.error("Self-healing sync failed:", syncErr);
+        }
+
         setIsSubmitting(false);
         submissionInProgressRef.current = false;
         return;
@@ -198,6 +218,8 @@ export default function PlayPage() {
           current_streak: data.current_streak,
           best_streak: data.best_streak,
           remaining_lives: data.remaining_lives,
+          current_question_index: prev.current_question_index + 1,
+          current_level: data.next_level || prev.current_level,
           active_shield: false,
           active_double_xp: false,
         };
@@ -233,6 +255,14 @@ export default function PlayPage() {
             xpEarned: data.level_completed.xp_earned,
             streak: data.level_completed.streak,
           });
+
+          // Advance to the first question of the new sector
+          if (data.next_question) {
+            setCurrentQuestion(data.next_question);
+            setQuestionNumber((prev) => prev + 1);
+            setQuestionSecondsLeft(data.next_question.time_limit);
+            setQuestionTimeLimit(data.next_question.time_limit);
+          }
 
           // If transitioning into Level 6, trigger Boss Intro!
           if (data.next_level === 6) {
@@ -359,8 +389,12 @@ export default function PlayPage() {
     setCurrentLevel(nextLvl);
     setIsBossLevel(nextLvl === 6);
     setLevelName(nextLvl === 6 ? "FINAL BOSS: THE MECHANICAL MASTERMIND" : `LEVEL ${nextLvl}`);
-    setPhase("playing");
+    if (currentQuestion) {
+      setQuestionSecondsLeft(currentQuestion.time_limit);
+      setQuestionTimeLimit(currentQuestion.time_limit);
+    }
     questionStartTimeRef.current = Date.now();
+    setPhase("playing");
   };
 
   // Engage Boss from Boss Intro Modal
@@ -368,8 +402,12 @@ export default function PlayPage() {
     setCurrentLevel(6);
     setIsBossLevel(true);
     setLevelName("FINAL BOSS: THE MECHANICAL MASTERMIND");
-    setPhase("playing");
+    if (currentQuestion) {
+      setQuestionSecondsLeft(currentQuestion.time_limit);
+      setQuestionTimeLimit(currentQuestion.time_limit);
+    }
     questionStartTimeRef.current = Date.now();
+    setPhase("playing");
   };
 
   if (phase === "loading") {
