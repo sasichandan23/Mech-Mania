@@ -249,6 +249,122 @@ class SoundEngine {
       osc.stop(this.ctx.currentTime + idx * 0.08 + 0.4);
     });
   }
+
+  // V8 Engine Ignition, Burnout & Launch Nitro SFX
+  public playCarBurnoutLaunch() {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+
+    // 1. Starter motor cranking (0.0s - 0.6s)
+    const starterOsc = this.ctx.createOscillator();
+    const starterGain = this.ctx.createGain();
+    starterOsc.type = "sawtooth";
+    starterOsc.frequency.setValueAtTime(65, t);
+    starterOsc.frequency.linearRampToValueAtTime(130, t + 0.35);
+    starterOsc.frequency.exponentialRampToValueAtTime(260, t + 0.6);
+
+    starterGain.gain.setValueAtTime(0.2, t);
+    starterGain.gain.linearRampToValueAtTime(0.28, t + 0.35);
+    starterGain.gain.exponentialRampToValueAtTime(0.01, t + 0.65);
+
+    starterOsc.connect(starterGain);
+    starterGain.connect(this.ctx.destination);
+    starterOsc.start(t);
+    starterOsc.stop(t + 0.65);
+
+    // 2. Engine V8 idle & heavy rumble (0.35s - 2.5s)
+    const v8Osc = this.ctx.createOscillator();
+    const v8Gain = this.ctx.createGain();
+    v8Osc.type = "sawtooth";
+    v8Osc.frequency.setValueAtTime(65, t + 0.35);
+    v8Osc.frequency.linearRampToValueAtTime(95, t + 0.8);
+    v8Osc.frequency.exponentialRampToValueAtTime(220, t + 1.4);
+    v8Osc.frequency.exponentialRampToValueAtTime(460, t + 2.0);
+
+    v8Gain.gain.setValueAtTime(0.0, t + 0.35);
+    v8Gain.gain.linearRampToValueAtTime(0.35, t + 0.55);
+    v8Gain.gain.setValueAtTime(0.35, t + 1.5);
+    v8Gain.gain.exponentialRampToValueAtTime(0.001, t + 2.5);
+
+    v8Osc.connect(v8Gain);
+    v8Gain.connect(this.ctx.destination);
+    v8Osc.start(t + 0.35);
+    v8Osc.stop(t + 2.5);
+
+    // 3. Tire Burnout Screech / Friction Squeal (0.7s - 1.7s)
+    const screechOsc = this.ctx.createOscillator();
+    const screechGain = this.ctx.createGain();
+    screechOsc.type = "triangle";
+    screechOsc.frequency.setValueAtTime(1800, t + 0.7);
+    screechOsc.frequency.linearRampToValueAtTime(2300, t + 1.0);
+    screechOsc.frequency.linearRampToValueAtTime(1600, t + 1.35);
+    screechOsc.frequency.linearRampToValueAtTime(2600, t + 1.7);
+
+    screechGain.gain.setValueAtTime(0.0, t + 0.7);
+    screechGain.gain.linearRampToValueAtTime(0.22, t + 0.85);
+    screechGain.gain.linearRampToValueAtTime(0.28, t + 1.3);
+    screechGain.gain.exponentialRampToValueAtTime(0.001, t + 1.75);
+
+    screechOsc.connect(screechGain);
+    screechGain.connect(this.ctx.destination);
+    screechOsc.start(t + 0.7);
+    screechOsc.stop(t + 1.75);
+
+    // 4. White Noise for tire smoke & exhaust hiss (0.65s - 2.2s)
+    try {
+      const bufferSize = Math.floor(this.ctx.sampleRate * 2.2);
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = buffer;
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = "bandpass";
+      filter.frequency.setValueAtTime(1200, t + 0.65);
+      filter.frequency.linearRampToValueAtTime(2800, t + 1.3);
+      filter.frequency.exponentialRampToValueAtTime(500, t + 2.2);
+      filter.Q.setValueAtTime(2.5, t + 0.65);
+
+      const noiseGain = this.ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.0, t + 0.65);
+      noiseGain.gain.linearRampToValueAtTime(0.25, t + 0.95);
+      noiseGain.gain.setValueAtTime(0.28, t + 1.4);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 2.2);
+
+      noise.connect(filter);
+      filter.connect(noiseGain);
+      noiseGain.connect(this.ctx.destination);
+
+      noise.start(t + 0.65);
+      noise.stop(t + 2.2);
+    } catch {
+      // Noise buffer fallback
+    }
+
+    // 5. Nitro Boost & Speed Zoom Launch Whoosh (1.65s - 2.5s)
+    const nitroOsc = this.ctx.createOscillator();
+    const nitroGain = this.ctx.createGain();
+    nitroOsc.type = "sine";
+    nitroOsc.frequency.setValueAtTime(320, t + 1.65);
+    nitroOsc.frequency.exponentialRampToValueAtTime(1400, t + 2.0);
+    nitroOsc.frequency.exponentialRampToValueAtTime(90, t + 2.5);
+
+    nitroGain.gain.setValueAtTime(0.0, t + 1.65);
+    nitroGain.gain.linearRampToValueAtTime(0.35, t + 1.9);
+    nitroGain.gain.exponentialRampToValueAtTime(0.001, t + 2.5);
+
+    nitroOsc.connect(nitroGain);
+    nitroGain.connect(this.ctx.destination);
+    nitroOsc.start(t + 1.65);
+    nitroOsc.stop(t + 2.5);
+  }
 }
 
 export const sounds = new SoundEngine();

@@ -78,3 +78,81 @@ button, a, select, input {
 ::-webkit-scrollbar-thumb:hover {
   background: #f59e0b;
 }
+
+/* Animated Car Ignition, Burnout & Launch Effects */
+@keyframes chassisIdle {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-1.5px); }
+}
+
+@keyframes chassisBurnout {
+  0% { transform: translate(2px, 0px) rotate(-0.5deg); }
+  25% { transform: translate(1px, -2px) rotate(-0.8deg); }
+  50% { transform: translate(3px, 1px) rotate(-0.4deg); }
+  75% { transform: translate(2px, -1.5px) rotate(-0.7deg); }
+  100% { transform: translate(2px, 0px) rotate(-0.5deg); }
+}
+
+@keyframes smokePuff1 {
+  0% { transform: scale(0.4) translate(0, 0); opacity: 0.9; }
+  50% { transform: scale(1.4) translate(-40px, -20px); opacity: 0.6; }
+  100% { transform: scale(2.2) translate(-80px, -40px); opacity: 0; }
+}
+
+@keyframes smokePuff2 {
+  0% { transform: scale(0.3) translate(0, 0); opacity: 0.8; }
+  50% { transform: scale(1.6) translate(-50px, -30px); opacity: 0.5; }
+  100% { transform: scale(2.6) translate(-100px, -60px); opacity: 0; }
+}
+
+@keyframes smokePuff3 {
+  0% { transform: scale(0.5) translate(0, 0); opacity: 0.7; }
+  100% { transform: scale(3.0) translate(-120px, -50px); opacity: 0; }
+}
+
+@keyframes exhaustFlame {
+  0%, 100% { transform: scaleX(1) scaleY(1); opacity: 0.9; }
+  50% { transform: scaleX(1.4) scaleY(1.3); opacity: 1; }
+}
+
+@keyframes nitroBoost {
+  0%, 100% { transform: scaleX(1); opacity: 0.95; filter: drop-shadow(0 0 20px #06b6d4); }
+  50% { transform: scaleX(1.35) scaleY(1.1); opacity: 1; filter: drop-shadow(0 0 35px #06b6d4); }
+}
+
+@keyframes speedStreak {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(250vw); }
+}
+
+.animate-chassis-idle {
+  animation: chassisIdle 0.12s ease-in-out infinite;
+}
+
+.animate-chassis-burnout {
+  animation: chassisBurnout 0.08s linear infinite;
+}
+
+.animate-smoke-puff-1 {
+  animation: smokePuff1 0.6s ease-out infinite;
+}
+
+.animate-smoke-puff-2 {
+  animation: smokePuff2 0.7s ease-out infinite 0.15s;
+}
+
+.animate-smoke-puff-3 {
+  animation: smokePuff3 0.8s ease-out infinite 0.3s;
+}
+
+.animate-exhaust-flame {
+  animation: exhaustFlame 0.06s ease-in-out infinite;
+}
+
+.animate-nitro-boost {
+  animation: nitroBoost 0.08s ease-in-out infinite;
+}
+
+.animate-speed-streak {
+  animation: speedStreak 0.35s linear infinite;
+}

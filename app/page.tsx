@@ -1,8 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { EVENT_CONFIG } from "@/config/event";
 import MechanicalBackground from "@/components/MechanicalBackground";
+import CarLaunchTransition from "@/components/CarLaunchTransition";
 import { sounds } from "@/lib/sounds";
 import { 
   Play, 
@@ -20,9 +23,23 @@ import {
 } from "lucide-react";
 
 export default function LandingPage() {
+  const router = useRouter();
+  const [showCarLaunch, setShowCarLaunch] = useState(false);
+
+  const handleEnterArena = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    sounds.playClick();
+    setShowCarLaunch(true);
+  };
+
   return (
     <div className="relative min-h-screen flex flex-col justify-between overflow-hidden">
       <MechanicalBackground />
+
+      {/* Animated Car Burnout & Launch Transition */}
+      {showCarLaunch && (
+        <CarLaunchTransition onComplete={() => router.push("/register")} />
+      )}
 
       {/* Hero Section */}
       <section className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-16 text-center">
@@ -54,14 +71,13 @@ export default function LandingPage() {
 
         {/* Primary Action Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto mb-14">
-          <Link
-            href="/register"
-            onClick={() => sounds.playClick()}
-            className="w-full sm:w-auto px-8 py-4 rounded-xl font-black text-sm uppercase tracking-wider bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-black shadow-xl shadow-amber-500/25 hover:shadow-amber-500/50 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 group"
+          <button
+            onClick={handleEnterArena}
+            className="w-full sm:w-auto px-8 py-4 rounded-xl font-black text-sm uppercase tracking-wider bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-black shadow-xl shadow-amber-500/25 hover:shadow-amber-500/50 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 group cursor-pointer"
           >
             <Play className="w-4 h-4 fill-black text-black group-hover:translate-x-0.5 transition-transform" />
             <span>ENTER THE ARENA</span>
-          </Link>
+          </button>
 
           <Link
             href="/leaderboard"
@@ -227,14 +243,13 @@ export default function LandingPage() {
             Scan the QR code or click below to register. Your session starts instantly.
           </p>
           <div className="pt-2">
-            <Link
-              href="/register"
-              onClick={() => sounds.playClick()}
-              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl font-black text-sm uppercase tracking-wider bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black shadow-xl shadow-amber-500/25 active:scale-95 transition-all"
+            <button
+              onClick={handleEnterArena}
+              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl font-black text-sm uppercase tracking-wider bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black shadow-xl shadow-amber-500/25 active:scale-95 transition-all cursor-pointer"
             >
               <span>COMMENCE REGISTRATION</span>
               <ArrowRight className="w-4 h-4" />
-            </Link>
+            </button>
           </div>
         </div>
       </section>
