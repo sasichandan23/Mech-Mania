@@ -47,6 +47,46 @@ const SEED_PARTICIPANTS: Record<string, Participant> = {
     email: "jayamohan.095@gmail.com",
     created_at: "2026-09-10T13:59:34.136Z",
   },
+  "f1a1a1a1-1111-4000-8000-000000000001": {
+    id: "f1a1a1a1-1111-4000-8000-000000000001",
+    participant_id: "MM2026-00003",
+    name: "SHREEYANS SHARMA",
+    register_number: "2411CS020088",
+    department: "Computer Science & Engineering",
+    year: "3rd Year",
+    email: "shreeyans.sharma@gmail.com",
+    created_at: "2026-09-10T14:05:00.000Z",
+  },
+  "f2a2a2a2-2222-4000-8000-000000000002": {
+    id: "f2a2a2a2-2222-4000-8000-000000000002",
+    participant_id: "MM2026-00004",
+    name: "Jangam Manikanta",
+    register_number: "2411ME020015",
+    department: "Mechanical Engineering",
+    year: "3rd Year",
+    email: "manikanta.jangam@gmail.com",
+    created_at: "2026-09-10T14:10:00.000Z",
+  },
+  "f3a3a3a3-3333-4000-8000-000000000003": {
+    id: "f3a3a3a3-3333-4000-8000-000000000003",
+    participant_id: "MM2026-00005",
+    name: "Mohammed Hussain",
+    register_number: "2411ME020042",
+    department: "Mechanical Engineering",
+    year: "3rd Year",
+    email: "mohammed.hussain@gmail.com",
+    created_at: "2026-09-10T14:15:00.000Z",
+  },
+  "f4a4a4a4-4444-4000-8000-000000000004": {
+    id: "f4a4a4a4-4444-4000-8000-000000000004",
+    participant_id: "MM2026-00006",
+    name: "Batchu Gyana Jayamohan",
+    register_number: "2411ME020077",
+    department: "Mechanical Engineering",
+    year: "3rd Year",
+    email: "gyana.jayamohan@gmail.com",
+    created_at: "2026-09-10T14:20:00.000Z",
+  },
 };
 
 const SEED_ATTEMPTS: Record<string, Attempt> = {
@@ -87,6 +127,82 @@ const SEED_ATTEMPTS: Record<string, Attempt> = {
     active_double_xp: false,
     started_at: "2026-09-10T13:59:34.138Z",
   },
+  "a1a1a1a1-1111-4000-8000-000000000001": {
+    id: "a1a1a1a1-1111-4000-8000-000000000001",
+    participant_id: "f1a1a1a1-1111-4000-8000-000000000001",
+    status: "completed",
+    score: 520,
+    accuracy: 86.7,
+    total_time: 210,
+    best_streak: 5,
+    current_streak: 5,
+    current_level: 6,
+    current_question_index: 30,
+    question_ids: [],
+    remaining_lives: 2,
+    power_ups: { fiftyFifty: 0, timeFreeze: 1, doubleXP: 0, shield: 1 },
+    active_shield: false,
+    active_double_xp: false,
+    started_at: "2026-09-10T14:05:00.000Z",
+    completed_at: "2026-09-10T14:08:30.000Z",
+  },
+  "a2a2a2a2-2222-4000-8000-000000000002": {
+    id: "a2a2a2a2-2222-4000-8000-000000000002",
+    participant_id: "f2a2a2a2-2222-4000-8000-000000000002",
+    status: "completed",
+    score: 280,
+    accuracy: 70.0,
+    total_time: 245,
+    best_streak: 3,
+    current_streak: 2,
+    current_level: 5,
+    current_question_index: 25,
+    question_ids: [],
+    remaining_lives: 1,
+    power_ups: { fiftyFifty: 0, timeFreeze: 0, doubleXP: 1, shield: 0 },
+    active_shield: false,
+    active_double_xp: false,
+    started_at: "2026-09-10T14:10:00.000Z",
+    completed_at: "2026-09-10T14:14:05.000Z",
+  },
+  "a3a3a3a3-3333-4000-8000-000000000003": {
+    id: "a3a3a3a3-3333-4000-8000-000000000003",
+    participant_id: "f3a3a3a3-3333-4000-8000-000000000003",
+    status: "completed",
+    score: 210,
+    accuracy: 60.0,
+    total_time: 260,
+    best_streak: 2,
+    current_streak: 1,
+    current_level: 4,
+    current_question_index: 20,
+    question_ids: [],
+    remaining_lives: 0,
+    power_ups: { fiftyFifty: 1, timeFreeze: 1, doubleXP: 0, shield: 0 },
+    active_shield: false,
+    active_double_xp: false,
+    started_at: "2026-09-10T14:15:00.000Z",
+    completed_at: "2026-09-10T14:19:20.000Z",
+  },
+  "a4a4a4a4-4444-4000-8000-000000000004": {
+    id: "a4a4a4a4-4444-4000-8000-000000000004",
+    participant_id: "f4a4a4a4-4444-4000-8000-000000000004",
+    status: "completed",
+    score: 150,
+    accuracy: 50.0,
+    total_time: 275,
+    best_streak: 2,
+    current_streak: 0,
+    current_level: 3,
+    current_question_index: 15,
+    question_ids: [],
+    remaining_lives: 0,
+    power_ups: { fiftyFifty: 0, timeFreeze: 1, doubleXP: 0, shield: 1 },
+    active_shield: false,
+    active_double_xp: false,
+    started_at: "2026-09-10T14:20:00.000Z",
+    completed_at: "2026-09-10T14:24:35.000Z",
+  },
 };
 
 function loadLocalState(): LocalDbState {
@@ -117,7 +233,7 @@ function loadLocalState(): LocalDbState {
     attempts: { ...SEED_ATTEMPTS },
     answers: [],
     power_up_usage: [],
-    counter: 3,
+    counter: 7,
   };
 }
 
@@ -140,16 +256,88 @@ function getLocalState(): LocalDbState {
 }
 
 export class GameStore {
-  // Hydrate state from a verified session token (vital for serverless lambda instances)
-  static async hydrateFromSession(participant: Participant, attempt: Attempt) {
+  // Guaranteed Unique Participant ID Generator (Zero Collisions across concurrent instances)
+  static async getNextUniqueParticipantId(): Promise<string> {
+    const usedNumbers = new Set<number>();
+
+    // 1. Gather all existing participant_ids from Supabase
+    if (isSupabaseConfigured && supabaseServer) {
+      try {
+        const { data, error } = await supabaseServer
+          .from("participants")
+          .select("participant_id");
+        if (!error && data) {
+          data.forEach((row: { participant_id: string }) => {
+            if (row.participant_id) {
+              const match = row.participant_id.match(/MM2026-(\d+)/i);
+              if (match) {
+                usedNumbers.add(parseInt(match[1], 10));
+              }
+            }
+          });
+        }
+      } catch (e) {
+        console.warn("Could not fetch participant IDs from Supabase:", e);
+      }
+    }
+
+    // 2. Gather from local state
     const state = getLocalState();
-    state.participants[participant.id] = participant;
-    state.attempts[attempt.id] = attempt;
+    if (state.participants) {
+      Object.values(state.participants).forEach((p) => {
+        if (p?.participant_id) {
+          const match = p.participant_id.match(/MM2026-(\d+)/i);
+          if (match) {
+            usedNumbers.add(parseInt(match[1], 10));
+          }
+        }
+      });
+    }
+
+    // 3. Gather from seed participants
+    Object.values(SEED_PARTICIPANTS).forEach((p) => {
+      if (p?.participant_id) {
+        const match = p.participant_id.match(/MM2026-(\d+)/i);
+        if (match) {
+          usedNumbers.add(parseInt(match[1], 10));
+        }
+      }
+    });
+
+    // 4. Find the first positive integer that is not used
+    let candidate = 1;
+    while (usedNumbers.has(candidate)) {
+      candidate++;
+    }
+
+    state.counter = Math.max(state.counter || 0, candidate + 1);
     saveLocalState(state);
 
+    return `MM2026-${String(candidate).padStart(5, "0")}`;
+  }
+
+  // Hydrate state from a verified session token (vital for serverless lambda instances)
+  static async hydrateFromSession(participant: Participant, attempt: Attempt) {
     // Persist records immediately into Supabase
     if (isSupabaseConfigured && supabaseServer) {
       try {
+        // Check if participant_id is already claimed by someone else with a different register_number
+        const { data: existingWithCode } = await supabaseServer
+          .from("participants")
+          .select("id, register_number")
+          .eq("participant_id", participant.participant_id)
+          .maybeSingle();
+
+        if (
+          existingWithCode &&
+          participant.register_number &&
+          existingWithCode.register_number.toUpperCase() !==
+            participant.register_number.toUpperCase()
+        ) {
+          // Reassign next unique ID to avoid collision
+          participant.participant_id = await GameStore.getNextUniqueParticipantId();
+        }
+
         await supabaseServer
           .from("participants")
           .upsert([participant], { onConflict: "id" });
@@ -160,6 +348,11 @@ export class GameStore {
         console.error("Supabase sync from session error:", e);
       }
     }
+
+    const state = getLocalState();
+    state.participants[participant.id] = participant;
+    state.attempts[attempt.id] = attempt;
+    saveLocalState(state);
   }
 
   // 1. Participant Management
@@ -251,55 +444,74 @@ export class GameStore {
     year: string;
     email: string;
   }): Promise<Participant> {
-    const state = getLocalState();
-    const nextNumber = state.counter;
-    state.counter += 1;
-    const participant_id = `MM2026-${String(nextNumber).padStart(5, "0")}`;
+    const regNo = data.register_number.trim().toUpperCase();
+    const email = data.email.trim().toLowerCase();
+
+    // Check if participant already exists by register number
+    const existing = await GameStore.findParticipantByRegisterNumber(regNo);
+    if (existing) {
+      return existing;
+    }
+
     const id = randomUUID();
     const created_at = new Date().toISOString();
+    let participant_id = await GameStore.getNextUniqueParticipantId();
 
     const participant: Participant = {
       id,
       participant_id,
       name: data.name.trim(),
-      register_number: data.register_number.trim().toUpperCase(),
+      register_number: regNo,
       department: data.department.trim(),
       year: data.year.trim(),
-      email: data.email.trim().toLowerCase(),
+      email,
       created_at,
     };
 
     if (isSupabaseConfigured && supabaseServer) {
-      try {
-        const { data: inserted, error } = await supabaseServer
-          .from("participants")
-          .upsert([participant], { onConflict: "id" })
-          .select()
-          .single();
-        if (!error && inserted) {
-          state.participants[inserted.id] = inserted;
-          saveLocalState(state);
-          return inserted;
-        }
-        if (error) {
-          console.error("Supabase insert participant error:", error);
-          // Try to recover existing if conflict on register_number
-          const { data: existing } = await supabaseServer
+      // Retry up to 5 times if race condition occurs on participant_id
+      for (let attempt = 0; attempt < 5; attempt++) {
+        try {
+          const { data: inserted, error } = await supabaseServer
             .from("participants")
-            .select("*")
-            .eq("register_number", participant.register_number)
-            .maybeSingle();
-          if (existing) {
-            state.participants[existing.id] = existing;
+            .insert([participant])
+            .select()
+            .single();
+
+          if (!error && inserted) {
+            const state = getLocalState();
+            state.participants[inserted.id] = inserted;
             saveLocalState(state);
-            return existing;
+            return inserted;
           }
+
+          if (error) {
+            console.warn(`Supabase insert attempt ${attempt + 1} warning:`, error.message);
+            // Check if conflict on register_number
+            const { data: existingUser } = await supabaseServer
+              .from("participants")
+              .select("*")
+              .eq("register_number", participant.register_number)
+              .maybeSingle();
+
+            if (existingUser) {
+              const state = getLocalState();
+              state.participants[existingUser.id] = existingUser;
+              saveLocalState(state);
+              return existingUser;
+            }
+
+            // Conflict on participant_id! Generate next unique ID and retry
+            participant_id = await GameStore.getNextUniqueParticipantId();
+            participant.participant_id = participant_id;
+          }
+        } catch (e) {
+          console.error("Supabase participant insert exception:", e);
         }
-      } catch (e) {
-        console.error("Supabase participant insert exception:", e);
       }
     }
 
+    const state = getLocalState();
     state.participants[participant.id] = participant;
     saveLocalState(state);
     return participant;
@@ -590,7 +802,7 @@ export class GameStore {
     // Seed from all known participants
     allParticipants.forEach((p) => {
       if (!p) return;
-      const key = (p.register_number || p.participant_id || p.id).toUpperCase().trim();
+      const key = (p.register_number || p.id || p.email || p.participant_id).toUpperCase().trim();
       const existing = unifiedMap.get(key);
       if (!existing) {
         unifiedMap.set(key, { participant: p });
@@ -620,7 +832,7 @@ export class GameStore {
         };
       }
 
-      const key = (p.register_number || p.participant_id || p.id).toUpperCase().trim();
+      const key = (p.register_number || p.id || p.email || p.participant_id).toUpperCase().trim();
       const existing = unifiedMap.get(key);
 
       if (!existing) {
@@ -639,8 +851,25 @@ export class GameStore {
       }
     });
 
-    // 5. Convert to LeaderboardEntry array
+    // 5. Convert to LeaderboardEntry array with guaranteed 100% unique participant IDs
     const entries: LeaderboardEntry[] = [];
+    const usedParticipantIds = new Set<string>();
+    let nextAvailableIdNumber = 1;
+
+    const allocateUniqueId = (preferredId?: string): string => {
+      if (preferredId && preferredId.startsWith("MM2026-") && !usedParticipantIds.has(preferredId)) {
+        usedParticipantIds.add(preferredId);
+        return preferredId;
+      }
+      while (usedParticipantIds.has(`MM2026-${String(nextAvailableIdNumber).padStart(5, "0")}`)) {
+        nextAvailableIdNumber++;
+      }
+      const uniqueId = `MM2026-${String(nextAvailableIdNumber).padStart(5, "0")}`;
+      usedParticipantIds.add(uniqueId);
+      nextAvailableIdNumber++;
+      return uniqueId;
+    };
+
     unifiedMap.forEach(({ participant, attempt }) => {
       const score = attempt ? Number(attempt.score) || 0 : 0;
       const accuracy = attempt ? Number(attempt.accuracy) || 0 : 0;
@@ -654,9 +883,13 @@ export class GameStore {
         participant.created_at ||
         new Date().toISOString();
 
+      const uniqueParticipantId = allocateUniqueId(participant.participant_id);
+
       entries.push({
+        id: participant.id,
+        register_number: participant.register_number,
         rank: 0,
-        participant_id: participant.participant_id || "MM2026-????",
+        participant_id: uniqueParticipantId,
         name: participant.name || "Cadet Engineer",
         department: participant.department || "Mechanical",
         year: participant.year || "3rd",

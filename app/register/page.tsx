@@ -74,6 +74,12 @@ export default function RegisterPage() {
       if (typeof window !== "undefined") {
         localStorage.setItem("mech_mania_attempt_id", data.attempt.id);
         localStorage.setItem("mech_mania_participant_id", data.participant.participant_id);
+        if (data.participant.register_number) {
+          localStorage.setItem("mech_mania_reg_no", data.participant.register_number);
+        }
+        if (data.participant.id) {
+          localStorage.setItem("mech_mania_user_uuid", data.participant.id);
+        }
         if (data.session_token) {
           localStorage.setItem("mech_mania_session_token", data.session_token);
         }

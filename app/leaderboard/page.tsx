@@ -37,6 +37,8 @@ export default function LeaderboardPage() {
   const [selectedDept, setSelectedDept] = useState("ALL");
   const [isLoading, setIsLoading] = useState(true);
   const [myParticipantId, setMyParticipantId] = useState<string | null>(null);
+  const [myRegNo, setMyRegNo] = useState<string | null>(null);
+  const [myUserUuid, setMyUserUuid] = useState<string | null>(null);
   const [isPermanentDb, setIsPermanentDb] = useState<boolean>(true);
   const [syncedNotice, setSyncedNotice] = useState<string | null>(null);
 
@@ -73,7 +75,11 @@ export default function LeaderboardPage() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const pId = localStorage.getItem("mech_mania_participant_id");
+      const regNo = localStorage.getItem("mech_mania_reg_no");
+      const userUuid = localStorage.getItem("mech_mania_user_uuid");
       setMyParticipantId(pId);
+      setMyRegNo(regNo);
+      setMyUserUuid(userUuid);
 
       // Self-healing: sync client session token with server/Supabase
       const token = localStorage.getItem("mech_mania_session_token");
@@ -160,7 +166,12 @@ export default function LeaderboardPage() {
   };
 
   const top3 = entries.slice(0, 3);
-  const myRankEntry = entries.find((e) => e.participant_id === myParticipantId);
+  const myRankEntry = entries.find(
+    (e) =>
+      (myUserUuid && e.id && e.id === myUserUuid) ||
+      (myRegNo && e.register_number && e.register_number.toUpperCase() === myRegNo.toUpperCase()) ||
+      (myParticipantId && e.participant_id === myParticipantId)
+  );
 
   return (
     <div className="relative min-h-[calc(100vh-4rem)] p-4 sm:p-6 lg:p-8">
@@ -488,12 +499,19 @@ export default function LeaderboardPage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredEntries.map((entry) => {
-                    const isMe = entry.participant_id === myParticipantId;
+                  filteredEntries.map((entry, index) => {
+                    // Match single current user uniquely by id, reg_no, or participant_id
+                    const myMatchIndex = filteredEntries.findIndex(
+                      (e) =>
+                        (myUserUuid && e.id && e.id === myUserUuid) ||
+                        (myRegNo && e.register_number && e.register_number.toUpperCase() === myRegNo.toUpperCase()) ||
+                        (myParticipantId && e.participant_id === myParticipantId)
+                    );
+                    const isMe = index === myMatchIndex;
 
                     return (
                       <tr
-                        key={entry.participant_id}
+                        key={`${entry.participant_id}-${entry.id || index}`}
                         className={`transition-colors ${
                           isMe
                             ? "bg-amber-500/15 font-bold text-amber-200 border-l-4 border-amber-500"

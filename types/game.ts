@@ -149,6 +149,8 @@ export interface UsePowerUpResponse {
 }
 
 export interface LeaderboardEntry {
+  id?: string;
+  register_number?: string;
   rank: number;
   participant_id: string;
   name: string;
