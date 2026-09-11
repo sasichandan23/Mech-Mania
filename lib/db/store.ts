@@ -208,21 +208,40 @@ export class GameStore {
   }
 
   static async getParticipantById(id: string): Promise<Participant | null> {
+    if (!id) return null;
+    const cleanId = id.trim();
+
     if (isSupabaseConfigured && supabaseServer) {
       try {
-        const { data, error } = await supabaseServer
-          .from("participants")
-          .select("*")
-          .eq("id", id)
-          .maybeSingle();
-        if (!error && data) return data;
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
+        if (isUuid) {
+          const { data, error } = await supabaseServer
+            .from("participants")
+            .select("*")
+            .eq("id", cleanId)
+            .maybeSingle();
+          if (!error && data) return data;
+        } else {
+          const { data, error } = await supabaseServer
+            .from("participants")
+            .select("*")
+            .eq("participant_id", cleanId)
+            .maybeSingle();
+          if (!error && data) return data;
+        }
       } catch (e) {
         console.error("Supabase getParticipantById error:", e);
       }
     }
 
     const state = getLocalState();
-    return state.participants[id] || null;
+    return (
+      state.participants[cleanId] ||
+      Object.values(state.participants).find(
+        (p) => p.id === cleanId || p.participant_id === cleanId
+      ) ||
+      null
+    );
   }
 
   static async createParticipant(data: {
@@ -494,34 +513,22 @@ export class GameStore {
     saveLocalState(state);
   }
 
-  // 4. Leaderboard Calculation (Comprehensive: includes 100% of participants and attempts)
+  // 4. Leaderboard Calculation (Unified participant matching with real names & zero row limits)
   static async getLeaderboard(): Promise<LeaderboardEntry[]> {
     const localState = getLocalState();
 
-    // Dictionaries for participants and attempts
-    const participantsMap: Map<string, Participant> = new Map();
-    const attemptsMap: Map<string, Attempt> = new Map();
-
-    // 1. Seed with local state
+    // 1. Gather all participants from local memory and Supabase
+    const allParticipants: Participant[] = [];
     if (localState.participants) {
-      for (const p of Object.values(localState.participants)) {
-        if (p) {
-          if (p.id) participantsMap.set(p.id, p);
-          if (p.participant_id) participantsMap.set(p.participant_id, p);
-          if (p.register_number) participantsMap.set(p.register_number.toUpperCase(), p);
-        }
-      }
-    }
-    if (localState.attempts) {
-      for (const a of Object.values(localState.attempts)) {
-        if (a) {
-          if (a.id) attemptsMap.set(a.id, a);
-          if (a.participant_id) attemptsMap.set(a.participant_id, a);
-        }
-      }
+      allParticipants.push(...Object.values(localState.participants).filter(Boolean));
     }
 
-    // 2. Fetch from Supabase (if connected)
+    // 2. Gather all attempts from local memory and Supabase
+    const allAttempts: Attempt[] = [];
+    if (localState.attempts) {
+      allAttempts.push(...Object.values(localState.attempts).filter(Boolean));
+    }
+
     if (isSupabaseConfigured && supabaseServer) {
       try {
         const [pRes, aRes] = await Promise.all([
@@ -536,76 +543,123 @@ export class GameStore {
         ]);
 
         if (!pRes.error && pRes.data) {
-          for (const p of pRes.data) {
-            if (p) {
-              if (p.id) participantsMap.set(p.id, p);
-              if (p.participant_id) participantsMap.set(p.participant_id, p);
-              if (p.register_number) participantsMap.set(p.register_number.toUpperCase(), p);
-            }
-          }
+          allParticipants.push(...pRes.data);
         }
-
         if (!aRes.error && aRes.data) {
-          for (const a of aRes.data) {
-            if (a) {
-              // If attempt already exists, keep the one with higher score or completed status
-              const existing =
-                (a.id && attemptsMap.get(a.id)) ||
-                (a.participant_id && attemptsMap.get(a.participant_id));
-
-              if (
-                !existing ||
-                Number(a.score || 0) > Number(existing.score || 0) ||
-                (a.status === "completed" && existing.status !== "completed")
-              ) {
-                if (a.id) attemptsMap.set(a.id, a);
-                if (a.participant_id) attemptsMap.set(a.participant_id, a);
-              }
-            }
-          }
+          allAttempts.push(...aRes.data);
         }
       } catch (e) {
         console.error("Supabase getLeaderboard fetch exception:", e);
       }
     }
 
-    // 3. Deduplicate unique participants
-    const uniqueParticipants = new Map<string, Participant>();
-    participantsMap.forEach((p) => {
-      if (p.participant_id) {
-        uniqueParticipants.set(p.participant_id, p);
+    // 3. Multi-key indexes for instant participant resolution
+    const participantByUuid = new Map<string, Participant>();
+    const participantByCode = new Map<string, Participant>();
+    const participantByReg = new Map<string, Participant>();
+    const participantByEmail = new Map<string, Participant>();
+
+    allParticipants.forEach((p) => {
+      if (!p) return;
+      if (p.id) participantByUuid.set(p.id, p);
+      if (p.participant_id) participantByCode.set(p.participant_id.toUpperCase().trim(), p);
+      if (p.register_number) participantByReg.set(p.register_number.toUpperCase().trim(), p);
+      if (p.email) participantByEmail.set(p.email.toLowerCase().trim(), p);
+    });
+
+    const resolveParticipant = (identifier?: string): Participant | null => {
+      if (!identifier) return null;
+      const clean = identifier.trim();
+      return (
+        participantByUuid.get(clean) ||
+        participantByCode.get(clean.toUpperCase()) ||
+        participantByReg.get(clean.toUpperCase()) ||
+        participantByEmail.get(clean.toLowerCase()) ||
+        null
+      );
+    };
+
+    // 4. Unified Deduplicated Participants & Best Attempts Map
+    interface UnifiedRecord {
+      participant: Participant;
+      attempt?: Attempt;
+    }
+
+    const unifiedMap = new Map<string, UnifiedRecord>();
+
+    // Seed from all known participants
+    allParticipants.forEach((p) => {
+      if (!p) return;
+      const key = (p.register_number || p.participant_id || p.id).toUpperCase().trim();
+      const existing = unifiedMap.get(key);
+      if (!existing) {
+        unifiedMap.set(key, { participant: p });
+      } else if (!existing.participant.name && p.name) {
+        existing.participant = p;
       }
     });
 
-    // 4. Build leaderboard entry for every participant
+    // Match all attempts to their actual participants
+    allAttempts.forEach((a) => {
+      if (!a || !a.participant_id) return;
+
+      let p = resolveParticipant(a.participant_id);
+
+      if (!p) {
+        p = {
+          id: a.participant_id,
+          participant_id: a.participant_id.startsWith("MM2026-")
+            ? a.participant_id
+            : `MM2026-${a.participant_id.slice(0, 5)}`,
+          name: "Cadet Engineer",
+          register_number: a.participant_id,
+          department: "Mechanical",
+          year: "3rd",
+          email: "",
+          created_at: a.started_at || new Date().toISOString(),
+        };
+      }
+
+      const key = (p.register_number || p.participant_id || p.id).toUpperCase().trim();
+      const existing = unifiedMap.get(key);
+
+      if (!existing) {
+        unifiedMap.set(key, { participant: p, attempt: a });
+      } else if (!existing.attempt) {
+        existing.attempt = a;
+      } else {
+        const prevScore = Number(existing.attempt.score) || 0;
+        const newScore = Number(a.score) || 0;
+        if (
+          newScore > prevScore ||
+          (a.status === "completed" && existing.attempt.status !== "completed")
+        ) {
+          existing.attempt = a;
+        }
+      }
+    });
+
+    // 5. Convert to LeaderboardEntry array
     const entries: LeaderboardEntry[] = [];
-    const processedParticipantKeys = new Set<string>();
-
-    uniqueParticipants.forEach((p, pId) => {
-      processedParticipantKeys.add(pId);
-      if (p.id) processedParticipantKeys.add(p.id);
-
-      // Match attempt by participant UUID or participant_id code
-      const att = attemptsMap.get(p.id) || attemptsMap.get(p.participant_id);
-
-      const score = att ? Number(att.score) || 0 : 0;
-      const accuracy = att ? Number(att.accuracy) || 0 : 0;
-      const total_time = att ? Number(att.total_time) || 0 : 0;
-      const status = att ? att.status || "in_progress" : "registered";
-      const current_level = att ? Number(att.current_level) || 1 : 1;
-      const current_question_index = att ? Number(att.current_question_index) || 0 : 0;
+    unifiedMap.forEach(({ participant, attempt }) => {
+      const score = attempt ? Number(attempt.score) || 0 : 0;
+      const accuracy = attempt ? Number(attempt.accuracy) || 0 : 0;
+      const total_time = attempt ? Number(attempt.total_time) || 0 : 0;
+      const status = attempt ? attempt.status || "in_progress" : "registered";
+      const current_level = attempt ? Number(attempt.current_level) || 1 : 1;
+      const current_question_index = attempt ? Number(attempt.current_question_index) || 0 : 0;
       const completed_at =
-        att?.completed_at ||
-        att?.started_at ||
-        p.created_at ||
+        attempt?.completed_at ||
+        attempt?.started_at ||
+        participant.created_at ||
         new Date().toISOString();
 
       entries.push({
         rank: 0,
-        participant_id: p.participant_id,
-        name: p.name || "Anonymous Engineer",
-        department: p.department || "Mechanical",
-        year: p.year || "3rd",
+        participant_id: participant.participant_id || "MM2026-????",
+        name: participant.name || "Cadet Engineer",
+        department: participant.department || "Mechanical",
+        year: participant.year || "3rd",
         score,
         accuracy,
         total_time,
@@ -616,31 +670,9 @@ export class GameStore {
       });
     });
 
-    // 5. Also include any orphan attempts where participant record was missing
-    attemptsMap.forEach((att) => {
-      if (att && att.participant_id && !processedParticipantKeys.has(att.participant_id)) {
-        processedParticipantKeys.add(att.participant_id);
-        const isOfficialId = att.participant_id.startsWith("MM2026-");
-        entries.push({
-          rank: 0,
-          participant_id: isOfficialId ? att.participant_id : "MM2026-????",
-          name: "Anonymous Engineer",
-          department: "Mechanical",
-          year: "3rd",
-          score: Number(att.score) || 0,
-          accuracy: Number(att.accuracy) || 0,
-          total_time: Number(att.total_time) || 0,
-          completed_at: att.completed_at || att.started_at || new Date().toISOString(),
-          status: att.status || "in_progress",
-          current_level: Number(att.current_level) || 1,
-          current_question_index: Number(att.current_question_index) || 0,
-        });
-      }
-    });
-
-    // 6. Sort all entries:
-    // - Score DESC
-    // - Completed status before in_progress if tied
+    // 6. Sort:
+    // - Highest Score DESC
+    // - Completed status first if scores tie
     // - Accuracy DESC
     // - Total time ASC (if > 0)
     // - Completed/Created timestamp ASC
@@ -656,7 +688,7 @@ export class GameStore {
       return new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime();
     });
 
-    // 7. Assign 1-indexed Ranks
+    // 7. Assign 1-indexed Ranks (Supports unlimited players: 4, 8, 50, 500+)
     return entries.map((entry, index) => ({
       ...entry,
       rank: index + 1,
