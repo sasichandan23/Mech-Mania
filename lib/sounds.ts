@@ -252,70 +252,76 @@ class SoundEngine {
 
   // V8 Engine Ignition, Burnout & Launch Nitro SFX
   public playCarBurnoutLaunch() {
-    if (this.isMuted) return;
+    this.isMuted = false; // Always force audio active for high-octane intro
     this.init();
     if (!this.ctx) return;
+    if (this.ctx.state === "suspended") {
+      this.ctx.resume().catch(() => {});
+    }
 
     const t = this.ctx.currentTime;
+    const master = this.ctx.createGain();
+    master.gain.setValueAtTime(0.85, t);
+    master.connect(this.ctx.destination);
 
-    // 1. Starter motor cranking (0.0s - 1.0s)
+    // Stage 1: Engine Starter Cranking (0.6s - 1.4s)
     const starterOsc = this.ctx.createOscillator();
     const starterGain = this.ctx.createGain();
     starterOsc.type = "sawtooth";
-    starterOsc.frequency.setValueAtTime(65, t);
-    starterOsc.frequency.linearRampToValueAtTime(140, t + 0.5);
-    starterOsc.frequency.exponentialRampToValueAtTime(280, t + 1.0);
+    starterOsc.frequency.setValueAtTime(60, t + 0.6);
+    starterOsc.frequency.linearRampToValueAtTime(140, t + 1.0);
+    starterOsc.frequency.exponentialRampToValueAtTime(320, t + 1.4);
 
-    starterGain.gain.setValueAtTime(0.2, t);
-    starterGain.gain.linearRampToValueAtTime(0.28, t + 0.5);
-    starterGain.gain.exponentialRampToValueAtTime(0.01, t + 1.05);
+    starterGain.gain.setValueAtTime(0.0, t + 0.6);
+    starterGain.gain.linearRampToValueAtTime(0.35, t + 0.8);
+    starterGain.gain.exponentialRampToValueAtTime(0.01, t + 1.45);
 
     starterOsc.connect(starterGain);
-    starterGain.connect(this.ctx.destination);
-    starterOsc.start(t);
-    starterOsc.stop(t + 1.05);
+    starterGain.connect(master);
+    starterOsc.start(t + 0.6);
+    starterOsc.stop(t + 1.45);
 
-    // 2. Engine V8 idle & heavy rumble (0.5s - 3.6s)
+    // Stage 2: Deep V8 Throttle & Aggressive Revving (1.4s - 2.3s)
     const v8Osc = this.ctx.createOscillator();
     const v8Gain = this.ctx.createGain();
     v8Osc.type = "sawtooth";
-    v8Osc.frequency.setValueAtTime(65, t + 0.5);
-    v8Osc.frequency.linearRampToValueAtTime(95, t + 1.2);
-    v8Osc.frequency.exponentialRampToValueAtTime(240, t + 2.4);
-    v8Osc.frequency.exponentialRampToValueAtTime(500, t + 3.2);
+    v8Osc.frequency.setValueAtTime(75, t + 1.2);
+    v8Osc.frequency.linearRampToValueAtTime(180, t + 1.6);
+    v8Osc.frequency.exponentialRampToValueAtTime(420, t + 2.1);
+    v8Osc.frequency.linearRampToValueAtTime(260, t + 2.3);
 
-    v8Gain.gain.setValueAtTime(0.0, t + 0.5);
-    v8Gain.gain.linearRampToValueAtTime(0.35, t + 0.8);
-    v8Gain.gain.setValueAtTime(0.35, t + 2.7);
-    v8Gain.gain.exponentialRampToValueAtTime(0.001, t + 3.6);
+    v8Gain.gain.setValueAtTime(0.0, t + 1.2);
+    v8Gain.gain.linearRampToValueAtTime(0.45, t + 1.4);
+    v8Gain.gain.setValueAtTime(0.45, t + 2.2);
+    v8Gain.gain.exponentialRampToValueAtTime(0.01, t + 2.35);
 
     v8Osc.connect(v8Gain);
-    v8Gain.connect(this.ctx.destination);
-    v8Osc.start(t + 0.5);
-    v8Osc.stop(t + 3.6);
+    v8Gain.connect(master);
+    v8Osc.start(t + 1.2);
+    v8Osc.stop(t + 2.35);
 
-    // 3. Tire Burnout Screech / Friction Squeal (1.1s - 2.8s)
+    // Stage 3: Tire Burnout Squeal & Friction Screech (2.3s - 3.8s)
     const screechOsc = this.ctx.createOscillator();
     const screechGain = this.ctx.createGain();
     screechOsc.type = "triangle";
-    screechOsc.frequency.setValueAtTime(1800, t + 1.1);
-    screechOsc.frequency.linearRampToValueAtTime(2400, t + 1.6);
-    screechOsc.frequency.linearRampToValueAtTime(1700, t + 2.1);
-    screechOsc.frequency.linearRampToValueAtTime(2700, t + 2.7);
+    screechOsc.frequency.setValueAtTime(1900, t + 2.3);
+    screechOsc.frequency.linearRampToValueAtTime(2500, t + 2.8);
+    screechOsc.frequency.linearRampToValueAtTime(1800, t + 3.2);
+    screechOsc.frequency.linearRampToValueAtTime(2800, t + 3.8);
 
-    screechGain.gain.setValueAtTime(0.0, t + 1.1);
-    screechGain.gain.linearRampToValueAtTime(0.24, t + 1.3);
-    screechGain.gain.setValueAtTime(0.28, t + 2.3);
-    screechGain.gain.exponentialRampToValueAtTime(0.001, t + 2.8);
+    screechGain.gain.setValueAtTime(0.0, t + 2.3);
+    screechGain.gain.linearRampToValueAtTime(0.38, t + 2.5);
+    screechGain.gain.setValueAtTime(0.4, t + 3.5);
+    screechGain.gain.exponentialRampToValueAtTime(0.001, t + 3.85);
 
     screechOsc.connect(screechGain);
-    screechGain.connect(this.ctx.destination);
-    screechOsc.start(t + 1.1);
-    screechOsc.stop(t + 2.8);
+    screechGain.connect(master);
+    screechOsc.start(t + 2.3);
+    screechOsc.stop(t + 3.85);
 
-    // 4. White Noise for tire smoke & exhaust hiss (1.0s - 3.2s)
+    // Stage 3: White Noise for tire smoke & exhaust hiss (2.3s - 4.0s)
     try {
-      const bufferSize = Math.floor(this.ctx.sampleRate * 3.5);
+      const bufferSize = Math.floor(this.ctx.sampleRate * 2.0);
       const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
       const data = buffer.getChannelData(0);
       for (let i = 0; i < bufferSize; i++) {
@@ -327,43 +333,41 @@ class SoundEngine {
 
       const filter = this.ctx.createBiquadFilter();
       filter.type = "bandpass";
-      filter.frequency.setValueAtTime(1200, t + 1.0);
-      filter.frequency.linearRampToValueAtTime(2800, t + 2.2);
-      filter.frequency.exponentialRampToValueAtTime(500, t + 3.2);
-      filter.Q.setValueAtTime(2.5, t + 1.0);
+      filter.frequency.setValueAtTime(1400, t + 2.3);
+      filter.frequency.linearRampToValueAtTime(3200, t + 3.0);
+      filter.frequency.exponentialRampToValueAtTime(600, t + 3.9);
+      filter.Q.setValueAtTime(3.0, t + 2.3);
 
       const noiseGain = this.ctx.createGain();
-      noiseGain.gain.setValueAtTime(0.0, t + 1.0);
-      noiseGain.gain.linearRampToValueAtTime(0.25, t + 1.3);
-      noiseGain.gain.setValueAtTime(0.28, t + 2.5);
-      noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 3.2);
+      noiseGain.gain.setValueAtTime(0.0, t + 2.3);
+      noiseGain.gain.linearRampToValueAtTime(0.38, t + 2.5);
+      noiseGain.gain.setValueAtTime(0.38, t + 3.5);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 4.0);
 
       noise.connect(filter);
       filter.connect(noiseGain);
-      noiseGain.connect(this.ctx.destination);
+      noiseGain.connect(master);
 
-      noise.start(t + 1.0);
-      noise.stop(t + 3.2);
-    } catch {
-      // Noise buffer fallback
-    }
+      noise.start(t + 2.3);
+      noise.stop(t + 4.0);
+    } catch {}
 
-    // 5. Nitro Boost & Speed Zoom Launch Whoosh (2.7s - 3.7s)
+    // Stage 4: Nitro Rocket Blast & Fast Speed Acceleration Whoosh (3.8s - 4.6s)
     const nitroOsc = this.ctx.createOscillator();
     const nitroGain = this.ctx.createGain();
-    nitroOsc.type = "sine";
-    nitroOsc.frequency.setValueAtTime(320, t + 2.7);
-    nitroOsc.frequency.exponentialRampToValueAtTime(1500, t + 3.2);
-    nitroOsc.frequency.exponentialRampToValueAtTime(90, t + 3.7);
+    nitroOsc.type = "sawtooth";
+    nitroOsc.frequency.setValueAtTime(380, t + 3.8);
+    nitroOsc.frequency.exponentialRampToValueAtTime(1600, t + 4.2);
+    nitroOsc.frequency.exponentialRampToValueAtTime(80, t + 4.6);
 
-    nitroGain.gain.setValueAtTime(0.0, t + 2.7);
-    nitroGain.gain.linearRampToValueAtTime(0.35, t + 3.1);
-    nitroGain.gain.exponentialRampToValueAtTime(0.001, t + 3.7);
+    nitroGain.gain.setValueAtTime(0.0, t + 3.8);
+    nitroGain.gain.linearRampToValueAtTime(0.48, t + 4.0);
+    nitroGain.gain.exponentialRampToValueAtTime(0.001, t + 4.6);
 
     nitroOsc.connect(nitroGain);
-    nitroGain.connect(this.ctx.destination);
-    nitroOsc.start(t + 2.7);
-    nitroOsc.stop(t + 3.7);
+    nitroGain.connect(master);
+    nitroOsc.start(t + 3.8);
+    nitroOsc.stop(t + 4.6);
   }
 }
 

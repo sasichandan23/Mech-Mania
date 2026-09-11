@@ -28,7 +28,8 @@ export default function LandingPage() {
 
   const handleEnterArena = (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
-    sounds.playClick();
+    sounds.unlockAudio();
+    sounds.playCarBurnoutLaunch();
     setShowCarLaunch(true);
   };
 
