@@ -799,15 +799,40 @@ export class GameStore {
 
     const unifiedMap = new Map<string, UnifiedRecord>();
 
+    // Canonical key generator ensures 1 person has exactly 1 leaderboard row
+    const getCanonicalKey = (p: Participant): string => {
+      if (p.name && p.name.trim()) {
+        const cleanName = p.name.trim().toLowerCase().replace(/\s+/g, " ");
+        if (cleanName !== "cadet engineer" && cleanName !== "anonymous engineer") {
+          return `NAME:${cleanName}`;
+        }
+      }
+      if (p.register_number && p.register_number.trim()) {
+        return `REG:${p.register_number.trim().toUpperCase()}`;
+      }
+      if (p.email && p.email.trim()) {
+        return `EMAIL:${p.email.trim().toLowerCase()}`;
+      }
+      return `ID:${(p.participant_id || p.id).toUpperCase().trim()}`;
+    };
+
     // Seed from all known participants
     allParticipants.forEach((p) => {
       if (!p) return;
-      const key = (p.register_number || p.id || p.email || p.participant_id).toUpperCase().trim();
+      const key = getCanonicalKey(p);
       const existing = unifiedMap.get(key);
       if (!existing) {
         unifiedMap.set(key, { participant: p });
-      } else if (!existing.participant.name && p.name) {
-        existing.participant = p;
+      } else {
+        if (!existing.participant.register_number && p.register_number) {
+          existing.participant.register_number = p.register_number;
+        }
+        if (!existing.participant.email && p.email) {
+          existing.participant.email = p.email;
+        }
+        if (p.name && p.name !== "Cadet Engineer" && p.name !== "Anonymous Engineer") {
+          existing.participant.name = p.name;
+        }
       }
     });
 
@@ -832,7 +857,7 @@ export class GameStore {
         };
       }
 
-      const key = (p.register_number || p.id || p.email || p.participant_id).toUpperCase().trim();
+      const key = getCanonicalKey(p);
       const existing = unifiedMap.get(key);
 
       if (!existing) {
@@ -903,25 +928,27 @@ export class GameStore {
       });
     });
 
-    // 6. Sort:
+    // 6. Sort strictly:
     // - Highest Score DESC
     // - Completed status first if scores tie
     // - Accuracy DESC
     // - Total time ASC (if > 0)
-    // - Completed/Created timestamp ASC
+    // - Name ASC (deterministic tiebreak, avoiding NaN date subtractions)
     entries.sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
       const aComp = a.status === "completed" ? 1 : 0;
       const bComp = b.status === "completed" ? 1 : 0;
       if (bComp !== aComp) return bComp - aComp;
       if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
-      if (a.total_time > 0 && b.total_time > 0 && a.total_time !== b.total_time) {
-        return a.total_time - b.total_time;
+      const aTime = Number(a.total_time) || 0;
+      const bTime = Number(b.total_time) || 0;
+      if (aTime > 0 && bTime > 0 && aTime !== bTime) {
+        return aTime - bTime;
       }
-      return new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime();
+      return (a.name || "").localeCompare(b.name || "");
     });
 
-    // 7. Assign 1-indexed Ranks (Supports unlimited players: 4, 8, 50, 500+)
+    // 7. Strictly 1-indexed sequential ranks (1, 2, 3, 4, 5, 6, ...)
     return entries.map((entry, index) => ({
       ...entry,
       rank: index + 1,

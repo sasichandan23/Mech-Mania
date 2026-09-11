@@ -146,7 +146,13 @@ export default function LeaderboardPage() {
       result = result.filter((e) => e.department.toLowerCase().includes(selectedDept.toLowerCase()));
     }
 
-    setFilteredEntries(result);
+    // Guarantee strictly sequential 1, 2, 3, 4, 5... sequence
+    const sequential = result.map((item, idx) => ({
+      ...item,
+      rank: idx + 1,
+    }));
+
+    setFilteredEntries(sequential);
   }, [entries, searchQuery, selectedDept]);
 
   const departments = [
@@ -522,16 +528,16 @@ export default function LeaderboardPage() {
                         <td className="py-3 px-3 sm:px-4">
                           <span
                             className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${
-                              entry.rank === 1
+                              index === 0
                                 ? "bg-yellow-500 text-black shadow-lg shadow-yellow-500/30"
-                                : entry.rank === 2
+                                : index === 1
                                 ? "bg-slate-300 text-black shadow-lg shadow-slate-300/20"
-                                : entry.rank === 3
+                                : index === 2
                                 ? "bg-amber-700 text-white shadow-lg shadow-amber-700/30"
                                 : "bg-slate-800 text-slate-400"
                             }`}
                           >
-                            #{entry.rank}
+                            #{index + 1}
                           </span>
                         </td>
 
