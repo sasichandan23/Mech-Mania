@@ -20,7 +20,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   Users,
-  Activity
+  Activity,
+  Smartphone
 } from "lucide-react";
 import { isSupabaseConfigured, supabasePublic } from "@/lib/db/supabase";
 
@@ -255,6 +256,29 @@ export default function LeaderboardPage() {
             </Link>
           </div>
         )}
+
+        {/* Mobile Participant Recovery Alert */}
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-cyan-950/40 border border-cyan-500/40 text-cyan-200 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg shadow-cyan-500/5">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shrink-0">
+              <Smartphone className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="font-bold font-mono text-cyan-300 block">
+                PLAYED ON MOBILE &amp; DON&apos;T SEE YOUR SCORE?
+              </span>
+              <span className="text-slate-300 text-[11px] block mt-0.5 font-sans">
+                Each phone has its quiz score saved inside its browser. Tap below to automatically sync and restore your score to the official leaderboard!
+              </span>
+            </div>
+          </div>
+          <Link
+            href="/recover"
+            className="px-4 py-2 rounded-xl bg-cyan-500 text-black font-mono font-black text-xs hover:bg-cyan-400 shrink-0 transition-colors whitespace-nowrap shadow-md shadow-cyan-500/20"
+          >
+            RESTORE MY SCORE →
+          </Link>
+        </div>
 
         {/* Live Participation KPI Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

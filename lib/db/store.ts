@@ -24,22 +24,100 @@ interface LocalDbState {
 
 // In serverless (Vercel / AWS Lambda), os.tmpdir() is the only guaranteed writable directory
 const LOCAL_DB_FILE = path.join(os.tmpdir(), "mech_mania_local_db.json");
+const CWD_DB_FILE = path.join(process.cwd(), ".mech_mania_local_db.json");
+
+const SEED_PARTICIPANTS: Record<string, Participant> = {
+  "41cbdc84-a30c-472f-a414-702dbac2a5ea": {
+    id: "41cbdc84-a30c-472f-a414-702dbac2a5ea",
+    participant_id: "MM2026-00001",
+    name: "Sasi chandan",
+    register_number: "2411CS020051",
+    department: "Computer Science & Engineering",
+    year: "3rd Year",
+    email: "sasichandan.23@gmail.com",
+    created_at: "2026-09-10T13:29:16.723Z",
+  },
+  "e35aa84d-4fcb-4858-842f-ba51dd7d15ad": {
+    id: "e35aa84d-4fcb-4858-842f-ba51dd7d15ad",
+    participant_id: "MM2026-00002",
+    name: "pardhu",
+    register_number: "2411CS020023",
+    department: "Mechanical Engineering",
+    year: "3rd Year",
+    email: "jayamohan.095@gmail.com",
+    created_at: "2026-09-10T13:59:34.136Z",
+  },
+};
+
+const SEED_ATTEMPTS: Record<string, Attempt> = {
+  "950dfd8e-dcde-4ef6-b88b-ceb70a7dd074": {
+    id: "950dfd8e-dcde-4ef6-b88b-ceb70a7dd074",
+    participant_id: "41cbdc84-a30c-472f-a414-702dbac2a5ea",
+    status: "completed",
+    score: 340,
+    accuracy: 23.3,
+    total_time: 289,
+    best_streak: 1,
+    current_streak: 1,
+    current_level: 6,
+    current_question_index: 30,
+    question_ids: [],
+    remaining_lives: 0,
+    power_ups: { fiftyFifty: 1, timeFreeze: 1, doubleXP: 1, shield: 1 },
+    active_shield: false,
+    active_double_xp: false,
+    started_at: "2026-09-10T13:29:16.728Z",
+    completed_at: "2026-09-10T13:34:06.727Z",
+  },
+  "e44726b0-82e6-47e6-a21f-c4cf2fddb0af": {
+    id: "e44726b0-82e6-47e6-a21f-c4cf2fddb0af",
+    participant_id: "e35aa84d-4fcb-4858-842f-ba51dd7d15ad",
+    status: "in_progress",
+    score: 0,
+    accuracy: 0,
+    total_time: 0,
+    best_streak: 0,
+    current_streak: 0,
+    current_level: 2,
+    current_question_index: 5,
+    question_ids: [],
+    remaining_lives: 0,
+    power_ups: { fiftyFifty: 1, timeFreeze: 1, doubleXP: 1, shield: 1 },
+    active_shield: false,
+    active_double_xp: false,
+    started_at: "2026-09-10T13:59:34.138Z",
+  },
+};
 
 function loadLocalState(): LocalDbState {
   try {
     if (fs.existsSync(LOCAL_DB_FILE)) {
       const data = fs.readFileSync(LOCAL_DB_FILE, "utf-8");
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      return {
+        ...parsed,
+        participants: { ...SEED_PARTICIPANTS, ...(parsed.participants || {}) },
+        attempts: { ...SEED_ATTEMPTS, ...(parsed.attempts || {}) },
+      };
+    }
+    if (fs.existsSync(CWD_DB_FILE)) {
+      const data = fs.readFileSync(CWD_DB_FILE, "utf-8");
+      const parsed = JSON.parse(data);
+      return {
+        ...parsed,
+        participants: { ...SEED_PARTICIPANTS, ...(parsed.participants || {}) },
+        attempts: { ...SEED_ATTEMPTS, ...(parsed.attempts || {}) },
+      };
     }
   } catch (e) {
-    console.warn("Could not read local DB file from tmp, using memory store:", e);
+    console.warn("Could not read local DB file from disk, using seed store:", e);
   }
   return {
-    participants: {},
-    attempts: {},
+    participants: { ...SEED_PARTICIPANTS },
+    attempts: { ...SEED_ATTEMPTS },
     answers: [],
     power_up_usage: [],
-    counter: 1,
+    counter: 3,
   };
 }
 

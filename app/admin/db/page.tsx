@@ -229,6 +229,162 @@ export default function AdminDbPage() {
           </div>
         )}
 
+        {/* Student Mobile Recovery Tool Card */}
+        <div className="p-5 rounded-2xl bg-gradient-to-r from-amber-950/40 via-slate-900/90 to-slate-900/90 border border-amber-500/40 space-y-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <span className="text-[10px] font-mono font-bold uppercase text-amber-400 tracking-wider block">
+                STUDENT AUTO-RECOVERY PORTAL
+              </span>
+              <h3 className="text-base font-black text-slate-100 uppercase">
+                Recover Any Student&apos;s Score From Their Phone
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Each student&apos;s phone has their signed score stored in their browser. Have them open this link to auto-upload to the leaderboard:
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={copySqlLocation}
+                className="px-3.5 py-2 rounded-xl bg-amber-500 text-black font-mono font-bold text-xs hover:bg-amber-400 flex items-center gap-1.5 transition-colors"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>COPY /RECOVER LINK</span>
+              </button>
+              <Link
+                href="/recover"
+                className="px-3.5 py-2 rounded-xl bg-slate-800 text-slate-200 font-mono text-xs hover:bg-slate-700 flex items-center gap-1.5 transition-colors"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>OPEN RECOVERY</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Add / Restore Missing Participant Form */}
+        <div className="p-6 rounded-2xl bg-slate-900/90 border border-mech-border space-y-4 shadow-xl">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div>
+              <h3 className="text-base font-black text-slate-100 uppercase flex items-center gap-2">
+                <Users className="w-5 h-5 text-amber-400" />
+                <span>Directly Restore / Add Participant</span>
+              </h3>
+              <p className="text-xs text-slate-400 font-mono mt-0.5">
+                Manually record any student&apos;s score immediately into the leaderboard & database
+              </p>
+            </div>
+          </div>
+
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const form = e.currentTarget;
+              const formData = new FormData(form);
+              const payload = {
+                name: formData.get("name"),
+                register_number: formData.get("register_number"),
+                department: formData.get("department"),
+                year: formData.get("year"),
+                score: Number(formData.get("score")),
+                accuracy: Number(formData.get("accuracy")),
+                total_time: Number(formData.get("total_time")),
+                status: "completed",
+              };
+
+              try {
+                const res = await fetch("/api/admin/manual-participant", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(payload),
+                });
+                const resJson = await res.json();
+                if (resJson.success) {
+                  alert(`✅ ${resJson.message}`);
+                  form.reset();
+                  fetchDiagnostic();
+                } else {
+                  alert(`❌ ${resJson.error}`);
+                }
+              } catch (err: any) {
+                alert("Network error: " + err.message);
+              }
+            }}
+            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs font-mono"
+          >
+            <div>
+              <label className="text-slate-400 block mb-1">Student Full Name *</label>
+              <input
+                name="name"
+                required
+                placeholder="e.g. Rahul Sharma"
+                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-slate-400 block mb-1">Register Number *</label>
+              <input
+                name="register_number"
+                required
+                placeholder="e.g. 2411ME01004"
+                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-slate-400 block mb-1">Department</label>
+              <input
+                name="department"
+                defaultValue="Mechanical"
+                placeholder="Mechanical / CSE / Automobile"
+                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-slate-400 block mb-1">Score (XP) *</label>
+              <input
+                name="score"
+                type="number"
+                required
+                placeholder="e.g. 320"
+                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-slate-400 block mb-1">Accuracy (%)</label>
+              <input
+                name="accuracy"
+                type="number"
+                step="0.1"
+                defaultValue="80"
+                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-slate-400 block mb-1">Total Time (Seconds)</label>
+              <input
+                name="total_time"
+                type="number"
+                defaultValue="180"
+                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div className="sm:col-span-2 md:col-span-3 pt-2">
+              <button
+                type="submit"
+                className="w-full py-2.5 rounded-xl bg-emerald-500 text-black font-black font-mono text-xs uppercase tracking-wider hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/20"
+              >
+                + SAVE & RECORD ON LEADERBOARD NOW
+              </button>
+            </div>
+          </form>
+        </div>
+
         {/* 2-Minute Permanent Setup Guide */}
         <div className="p-6 rounded-2xl bg-slate-900/90 border border-mech-border space-y-4">
           <h3 className="text-base font-black text-slate-100 uppercase tracking-tight flex items-center gap-2">
