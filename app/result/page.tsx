@@ -60,9 +60,15 @@ export default function ResultPage() {
         });
         const sessionData = await sessionRes.json();
 
-        if (sessionData.participant && sessionData.attempt) {
+        if (sessionRes.ok && sessionData.participant && sessionData.attempt) {
           setParticipant(sessionData.participant);
           setAttempt(sessionData.attempt);
+          try {
+            localStorage.setItem(
+              "mech_mania_saved_session",
+              JSON.stringify({ participant: sessionData.participant, attempt: sessionData.attempt })
+            );
+          } catch {}
 
           // Fetch leaderboard to calculate official rank
           const lbRes = await fetch("/api/leaderboard");
@@ -73,6 +79,29 @@ export default function ResultPage() {
             );
             if (entryIndex !== -1) {
               setLeaderboardRank(entryIndex + 1);
+            }
+          }
+        } else if (!sessionRes.ok && sessionToken) {
+          // Self-healing recovery: re-hydrate session into server and database
+          const syncRes = await fetch("/api/leaderboard/sync", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: sessionToken }),
+          });
+          const syncData = await syncRes.json();
+          if (syncData.synced && syncData.participant && syncData.attempt) {
+            setParticipant(syncData.participant);
+            setAttempt(syncData.attempt);
+
+            const lbRes = await fetch("/api/leaderboard");
+            const lbData = await lbRes.json();
+            if (lbData.leaderboard) {
+              const entryIndex = lbData.leaderboard.findIndex(
+                (item: any) => item.participant_id === syncData.participant.participant_id
+              );
+              if (entryIndex !== -1) {
+                setLeaderboardRank(entryIndex + 1);
+              }
             }
           }
         }

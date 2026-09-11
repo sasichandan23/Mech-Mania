@@ -43,3 +43,17 @@ export function verifySessionToken(token: string): SessionPayload | null {
   }
   return null;
 }
+
+export function decodeSessionToken(token: string): SessionPayload | null {
+  try {
+    const raw = Buffer.from(token, "base64").toString("utf-8");
+    const parsed = JSON.parse(raw);
+    if (parsed.p) {
+      return JSON.parse(parsed.p) as SessionPayload;
+    }
+  } catch (e) {
+    // Ignore error
+  }
+  return null;
+}
+

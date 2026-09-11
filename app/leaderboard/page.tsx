@@ -15,7 +15,10 @@ import {
   Zap, 
   Award, 
   User, 
-  ArrowLeft 
+  ArrowLeft,
+  Database,
+  AlertTriangle,
+  CheckCircle2
 } from "lucide-react";
 import { isSupabaseConfigured, supabasePublic } from "@/lib/db/supabase";
 
@@ -26,6 +29,8 @@ export default function LeaderboardPage() {
   const [selectedDept, setSelectedDept] = useState("ALL");
   const [isLoading, setIsLoading] = useState(true);
   const [myParticipantId, setMyParticipantId] = useState<string | null>(null);
+  const [isPermanentDb, setIsPermanentDb] = useState<boolean>(true);
+  const [syncedNotice, setSyncedNotice] = useState<string | null>(null);
 
   // Load Leaderboard data
   const fetchLeaderboard = async () => {
@@ -34,6 +39,9 @@ export default function LeaderboardPage() {
       const data = await res.json();
       if (data.leaderboard) {
         setEntries(data.leaderboard);
+      }
+      if (typeof data.is_permanent === "boolean") {
+        setIsPermanentDb(data.is_permanent);
       }
     } catch (err) {
       console.error("Failed to fetch leaderboard:", err);
@@ -44,7 +52,26 @@ export default function LeaderboardPage() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setMyParticipantId(localStorage.getItem("mech_mania_participant_id"));
+      const pId = localStorage.getItem("mech_mania_participant_id");
+      setMyParticipantId(pId);
+
+      // Self-healing: sync client session token with server/Supabase
+      const token = localStorage.getItem("mech_mania_session_token");
+      if (token) {
+        fetch("/api/leaderboard/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
+        })
+          .then((r) => r.json())
+          .then((syncRes) => {
+            if (syncRes.synced) {
+              setSyncedNotice(`Saved session for ${syncRes.participant?.name || "you"} synced with database.`);
+              fetchLeaderboard();
+            }
+          })
+          .catch((e) => console.warn("Client self-healing check:", e));
+      }
     }
 
     fetchLeaderboard();
@@ -131,7 +158,7 @@ export default function LeaderboardPage() {
               <ArrowLeft className="w-3.5 h-3.5" />
               BACK TO HQ
             </Link>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-2xl sm:text-3xl font-black text-slate-100 uppercase tracking-tight">
                 LIVE STANDINGS
               </h1>
@@ -139,6 +166,20 @@ export default function LeaderboardPage() {
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                 REALTIME
               </span>
+              {isPermanentDb ? (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center gap-1">
+                  <Database className="w-3 h-3 text-emerald-400" />
+                  CLOUD DB PERMANENT
+                </span>
+              ) : (
+                <Link
+                  href="/admin/db"
+                  className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 flex items-center gap-1 transition-colors"
+                >
+                  <AlertTriangle className="w-3 h-3 text-amber-400 animate-bounce" />
+                  EPHEMERAL STORAGE • SETUP DB
+                </Link>
+              )}
             </div>
             <p className="text-xs text-slate-400 font-mono mt-0.5">
               Rankings determined by Score → Accuracy → Total Completion Time
@@ -156,6 +197,45 @@ export default function LeaderboardPage() {
             <span>SYNC NOW</span>
           </button>
         </div>
+
+        {/* Synced Notification if client session was just restored */}
+        {syncedNotice && (
+          <div className="p-3.5 rounded-2xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-200 text-xs font-mono flex items-center justify-between gap-3 animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{syncedNotice}</span>
+            </div>
+            <button
+              onClick={() => setSyncedNotice(null)}
+              className="text-xs text-emerald-400 hover:text-white"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* Organizer Storage Warning if Supabase is not connected */}
+        {!isPermanentDb && (
+          <div className="p-4 rounded-2xl bg-amber-950/50 border border-amber-500/40 text-amber-200 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-2.5">
+              <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold font-mono text-amber-300 uppercase tracking-wider block">
+                  STORAGE WARNING: RUNNING IN EPHEMERAL MEMORY MODE
+                </span>
+                <span className="text-slate-300 text-[11px] block mt-0.5">
+                  Serverless instances reset when inactive. To store all scores and participants permanently forever across all devices and days, connect Supabase in Vercel.
+                </span>
+              </div>
+            </div>
+            <Link
+              href="/admin/db"
+              className="px-3.5 py-1.5 rounded-xl bg-amber-500 text-black font-mono font-bold text-xs hover:bg-amber-400 shrink-0 transition-colors"
+            >
+              CONNECT DATABASE (2 MIN)
+            </Link>
+          </div>
+        )}
 
         {/* Top 3 Podium (If at least 1 entry) */}
         {top3.length > 0 && (

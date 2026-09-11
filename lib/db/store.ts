@@ -63,26 +63,24 @@ function getLocalState(): LocalDbState {
 
 export class GameStore {
   // Hydrate state from a verified session token (vital for serverless lambda instances)
-  static hydrateFromSession(participant: Participant, attempt: Attempt) {
+  static async hydrateFromSession(participant: Participant, attempt: Attempt) {
     const state = getLocalState();
     state.participants[participant.id] = participant;
     state.attempts[attempt.id] = attempt;
     saveLocalState(state);
 
-    // Asynchronously ensure records exist in Supabase
+    // Persist records immediately into Supabase
     if (isSupabaseConfigured && supabaseServer) {
-      (async () => {
-        try {
-          await supabaseServer
-            .from("participants")
-            .upsert([participant], { onConflict: "id" });
-          await supabaseServer
-            .from("attempts")
-            .upsert([attempt], { onConflict: "id" });
-        } catch (e) {
-          console.error("Supabase sync from session error:", e);
-        }
-      })();
+      try {
+        await supabaseServer
+          .from("participants")
+          .upsert([participant], { onConflict: "id" });
+        await supabaseServer
+          .from("attempts")
+          .upsert([attempt], { onConflict: "id" });
+      } catch (e) {
+        console.error("Supabase sync from session error:", e);
+      }
     }
   }
 
@@ -183,9 +181,23 @@ export class GameStore {
           .single();
         if (!error && inserted) {
           state.participants[inserted.id] = inserted;
+          saveLocalState(state);
           return inserted;
         }
-        if (error) console.error("Supabase insert participant error:", error);
+        if (error) {
+          console.error("Supabase insert participant error:", error);
+          // Try to recover existing if conflict on register_number
+          const { data: existing } = await supabaseServer
+            .from("participants")
+            .select("*")
+            .eq("register_number", participant.register_number)
+            .maybeSingle();
+          if (existing) {
+            state.participants[existing.id] = existing;
+            saveLocalState(state);
+            return existing;
+          }
+        }
       } catch (e) {
         console.error("Supabase participant insert exception:", e);
       }
@@ -272,9 +284,24 @@ export class GameStore {
         if (!error && inserted) {
           const state = getLocalState();
           state.attempts[inserted.id] = inserted;
+          saveLocalState(state);
           return inserted;
         }
-        if (error) console.error("Supabase insert attempt error:", error);
+        if (error) {
+          console.error("Supabase insert attempt error:", error);
+          // If conflict on participant_id unique constraint, retrieve existing attempt
+          const { data: existing } = await supabaseServer
+            .from("attempts")
+            .select("*")
+            .eq("participant_id", data.participant_id)
+            .maybeSingle();
+          if (existing) {
+            const state = getLocalState();
+            state.attempts[existing.id] = existing;
+            saveLocalState(state);
+            return existing;
+          }
+        }
       } catch (e) {
         console.error("Supabase attempt insert exception:", e);
       }
@@ -289,22 +316,52 @@ export class GameStore {
   static async updateAttempt(attemptId: string, updates: Partial<Attempt>): Promise<Attempt | null> {
     if (isSupabaseConfigured && supabaseServer) {
       try {
-        const fullPayload = { id: attemptId, ...updates };
-        const { data, error } = await supabaseServer
+        // Strip undefined keys so Supabase / PostgREST doesn't choke
+        const cleanPayload: Record<string, any> = { id: attemptId };
+        for (const [key, val] of Object.entries(updates)) {
+          if (val !== undefined) {
+            cleanPayload[key] = val;
+          }
+        }
+
+        // 1. Try direct update first
+        const { data: updated, error: updateErr } = await supabaseServer
           .from("attempts")
-          .upsert(fullPayload, { onConflict: "id" })
+          .update(cleanPayload)
+          .eq("id", attemptId)
           .select()
-          .single();
-        if (!error && data) {
+          .maybeSingle();
+
+        if (!updateErr && updated) {
           const state = getLocalState();
           state.attempts[attemptId] = {
             ...(state.attempts[attemptId] || {}),
-            ...data,
+            ...updated,
           };
           saveLocalState(state);
           return state.attempts[attemptId];
         }
-        if (error) console.error("Supabase updateAttempt error:", error);
+
+        // 2. If update didn't match rows, try upsert
+        const { data: upserted, error: upsertErr } = await supabaseServer
+          .from("attempts")
+          .upsert(cleanPayload, { onConflict: "id" })
+          .select()
+          .maybeSingle();
+
+        if (!upsertErr && upserted) {
+          const state = getLocalState();
+          state.attempts[attemptId] = {
+            ...(state.attempts[attemptId] || {}),
+            ...upserted,
+          };
+          saveLocalState(state);
+          return state.attempts[attemptId];
+        }
+
+        if (updateErr || upsertErr) {
+          console.error("Supabase updateAttempt error:", updateErr || upsertErr);
+        }
       } catch (e) {
         console.error("Supabase updateAttempt error:", e);
       }
@@ -362,7 +419,34 @@ export class GameStore {
   // 4. Leaderboard Calculation
   static async getLeaderboard(): Promise<LeaderboardEntry[]> {
     if (isSupabaseConfigured && supabaseServer) {
-      // 1. Direct query with participants join
+      // 1. Try View first (if created by SETUP_LEADERBOARD_DATABASE.sql)
+      try {
+        const { data: viewData, error: viewErr } = await supabaseServer
+          .from("leaderboard_view")
+          .select("*")
+          .order("score", { ascending: false })
+          .order("accuracy", { ascending: false })
+          .order("total_time", { ascending: true })
+          .limit(200);
+
+        if (!viewErr && viewData && viewData.length > 0) {
+          return viewData.map((item: any, index: number) => ({
+            rank: index + 1,
+            participant_id: item.participant_id || "MM2026-????",
+            name: item.name || "Anonymous Engineer",
+            department: item.department || "Mechanical",
+            year: item.year || "3rd",
+            score: Number(item.score) || 0,
+            accuracy: Number(item.accuracy) || 0,
+            total_time: Number(item.total_time) || 0,
+            completed_at: item.completed_at || new Date().toISOString(),
+          }));
+        }
+      } catch (e) {
+        // leaderboard_view might not exist yet
+      }
+
+      // 2. Direct query with participants join
       try {
         const { data: joinedData, error: joinErr } = await supabaseServer
           .from("attempts")
@@ -387,7 +471,7 @@ export class GameStore {
           .order("score", { ascending: false })
           .order("accuracy", { ascending: false })
           .order("total_time", { ascending: true })
-          .limit(100);
+          .limit(200);
 
         if (!joinErr && joinedData && joinedData.length > 0) {
           const filtered = joinedData.filter(
@@ -396,16 +480,17 @@ export class GameStore {
           const activeList = filtered.length > 0 ? filtered : joinedData;
 
           return activeList.map((item: any, index: number) => {
-            const p = item.participants;
+            const rawP = item.participants;
+            const p = Array.isArray(rawP) ? rawP[0] : rawP;
             return {
               rank: index + 1,
               participant_id: p?.participant_id || "MM2026-????",
               name: p?.name || "Anonymous Engineer",
               department: p?.department || "Mechanical",
               year: p?.year || "3rd",
-              score: item.score || 0,
-              accuracy: item.accuracy || 0,
-              total_time: item.total_time || 0,
+              score: Number(item.score) || 0,
+              accuracy: Number(item.accuracy) || 0,
+              total_time: Number(item.total_time) || 0,
               completed_at: item.completed_at || item.started_at || new Date().toISOString(),
             };
           });
@@ -414,7 +499,7 @@ export class GameStore {
         console.warn("Supabase joined query fallback:", e);
       }
 
-      // 2. Resilient 2-step query: fetch attempts, then participants
+      // 3. Resilient 2-step query: fetch attempts, then participants
       try {
         const { data: attemptsData, error: attErr } = await supabaseServer
           .from("attempts")
@@ -422,7 +507,7 @@ export class GameStore {
           .order("score", { ascending: false })
           .order("accuracy", { ascending: false })
           .order("total_time", { ascending: true })
-          .limit(100);
+          .limit(200);
 
         if (!attErr && attemptsData && attemptsData.length > 0) {
           const participantIds = Array.from(new Set(attemptsData.map((a: any) => a.participant_id).filter(Boolean)));
@@ -437,6 +522,9 @@ export class GameStore {
             if (partsData) {
               partsData.forEach((p: any) => {
                 participantsMap[p.id] = p;
+                if (p.participant_id) {
+                  participantsMap[p.participant_id] = p;
+                }
               });
             }
           }
@@ -454,29 +542,15 @@ export class GameStore {
               name: p.name || "Anonymous Engineer",
               department: p.department || "Mechanical",
               year: p.year || "3rd",
-              score: att.score || 0,
-              accuracy: att.accuracy || 0,
-              total_time: att.total_time || 0,
+              score: Number(att.score) || 0,
+              accuracy: Number(att.accuracy) || 0,
+              total_time: Number(att.total_time) || 0,
               completed_at: att.completed_at || att.started_at || new Date().toISOString(),
             };
           });
         }
       } catch (e) {
         console.warn("Supabase 2-step query fallback:", e);
-      }
-
-      // 3. Fallback: leaderboard_view if it exists
-      try {
-        const { data: viewData, error: viewErr } = await supabaseServer
-          .from("leaderboard_view")
-          .select("*")
-          .limit(100);
-
-        if (!viewErr && viewData && viewData.length > 0) {
-          return viewData;
-        }
-      } catch (e) {
-        console.warn("Supabase view fallback:", e);
       }
     }
 
@@ -495,22 +569,26 @@ export class GameStore {
     });
 
     return targetAttempts.map((att, index) => {
-      const p = (att.participant_id && state.participants[att.participant_id]) || {
-        participant_id: "MM2026-????",
-        name: "Anonymous Engineer",
-        department: "Mechanical",
-        year: "3rd",
-      };
+      const p = (att.participant_id && state.participants[att.participant_id]) ||
+        Object.values(state.participants).find(
+          (item) => item.id === att.participant_id || item.participant_id === att.participant_id
+        ) || {
+          participant_id: "MM2026-????",
+          name: "Anonymous Engineer",
+          department: "Mechanical",
+          year: "3rd",
+        };
+
       return {
         rank: index + 1,
-        participant_id: p.participant_id,
-        name: p.name,
-        department: p.department,
-        year: p.year,
-        score: att.score,
-        accuracy: att.accuracy,
-        total_time: att.total_time,
-        completed_at: att.completed_at || att.started_at,
+        participant_id: p.participant_id || "MM2026-????",
+        name: p.name || "Anonymous Engineer",
+        department: p.department || "Mechanical",
+        year: p.year || "3rd",
+        score: Number(att.score) || 0,
+        accuracy: Number(att.accuracy) || 0,
+        total_time: Number(att.total_time) || 0,
+        completed_at: att.completed_at || att.started_at || new Date().toISOString(),
       };
     });
   }
