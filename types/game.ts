@@ -158,6 +158,9 @@ export interface LeaderboardEntry {
   accuracy: number;
   total_time: number;
   completed_at: string;
+  status?: string;
+  current_level?: number;
+  current_question_index?: number;
 }
 
 export interface GameSessionState {

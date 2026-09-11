@@ -18,13 +18,20 @@ import {
   ArrowLeft,
   Database,
   AlertTriangle,
-  CheckCircle2
+  CheckCircle2,
+  Users,
+  Activity
 } from "lucide-react";
 import { isSupabaseConfigured, supabasePublic } from "@/lib/db/supabase";
 
 export default function LeaderboardPage() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [filteredEntries, setFilteredEntries] = useState<LeaderboardEntry[]>([]);
+  const [counts, setCounts] = useState({
+    total_registered: 0,
+    total_playing: 0,
+    total_completed: 0,
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDept, setSelectedDept] = useState("ALL");
   const [isLoading, setIsLoading] = useState(true);
@@ -39,6 +46,18 @@ export default function LeaderboardPage() {
       const data = await res.json();
       if (data.leaderboard) {
         setEntries(data.leaderboard);
+        setCounts({
+          total_registered: data.total_registered ?? data.leaderboard.length,
+          total_playing:
+            data.total_playing ??
+            data.leaderboard.filter(
+              (e: LeaderboardEntry) =>
+                e.status === "in_progress" || e.status === "playing" || (!e.status || e.status === "registered")
+            ).length,
+          total_completed:
+            data.total_completed ??
+            data.leaderboard.filter((e: LeaderboardEntry) => e.status === "completed").length,
+        });
       }
       if (typeof data.is_permanent === "boolean") {
         setIsPermanentDb(data.is_permanent);
@@ -237,6 +256,63 @@ export default function LeaderboardPage() {
           </div>
         )}
 
+        {/* Live Participation KPI Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur flex items-center justify-between shadow-lg">
+            <div>
+              <span className="text-[10px] font-mono uppercase font-bold text-slate-400 tracking-wider block">
+                TOTAL REGISTERED
+              </span>
+              <div className="text-2xl sm:text-3xl font-black font-mono text-cyan-400 mt-0.5">
+                {counts.total_registered}
+              </div>
+              <span className="text-[11px] text-slate-500 font-sans block mt-0.5">
+                All registered engineers
+              </span>
+            </div>
+            <div className="w-11 h-11 rounded-xl bg-cyan-950/60 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
+              <Users className="w-5 h-5" />
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-slate-900/90 border border-amber-500/40 backdrop-blur flex items-center justify-between shadow-lg shadow-amber-500/5">
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-mono uppercase font-bold text-amber-300 tracking-wider">
+                  CURRENTLY PLAYING
+                </span>
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+              </div>
+              <div className="text-2xl sm:text-3xl font-black font-mono text-amber-400 mt-0.5">
+                {counts.total_playing}
+              </div>
+              <span className="text-[11px] text-slate-500 font-sans block mt-0.5">
+                Live in arena gauntlet
+              </span>
+            </div>
+            <div className="w-11 h-11 rounded-xl bg-amber-950/60 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+              <Activity className="w-5 h-5 animate-pulse" />
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-slate-900/90 border border-emerald-500/40 backdrop-blur flex items-center justify-between shadow-lg shadow-emerald-500/5">
+            <div>
+              <span className="text-[10px] font-mono uppercase font-bold text-emerald-300 tracking-wider block">
+                COMPLETED MISSIONS
+              </span>
+              <div className="text-2xl sm:text-3xl font-black font-mono text-emerald-400 mt-0.5">
+                {counts.total_completed}
+              </div>
+              <span className="text-[11px] text-slate-500 font-sans block mt-0.5">
+                Conquered all 6 levels
+              </span>
+            </div>
+            <div className="w-11 h-11 rounded-xl bg-emerald-950/60 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+              <Trophy className="w-5 h-5" />
+            </div>
+          </div>
+        </div>
+
         {/* Top 3 Podium (If at least 1 entry) */}
         {top3.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 pt-2">
@@ -251,6 +327,17 @@ export default function LeaderboardPage() {
                   {top3[1].name}
                 </div>
                 <div className="text-xs text-slate-400 font-mono">{top3[1].department}</div>
+                <div className="mt-2 flex items-center justify-center">
+                  {top3[1].status === "completed" ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-400" /> COMPLETED
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400" /> LIVE • LVL {top3[1].current_level || 1}
+                    </span>
+                  )}
+                </div>
                 <div className="mt-3 py-1.5 px-3 rounded-xl bg-slate-950 border border-slate-800 inline-flex items-center gap-2 font-mono font-bold text-amber-300 text-sm">
                   <Zap className="w-4 h-4 text-amber-400" />
                   {top3[1].score} XP
@@ -269,6 +356,17 @@ export default function LeaderboardPage() {
                   {top3[0].name}
                 </div>
                 <div className="text-xs text-slate-400 font-mono">{top3[0].department}</div>
+                <div className="mt-2 flex items-center justify-center">
+                  {top3[0].status === "completed" ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> COMPLETED
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400" /> LIVE • LVL {top3[0].current_level || 1}
+                    </span>
+                  )}
+                </div>
                 <div className="mt-3 py-2 px-4 rounded-xl bg-yellow-500/20 border border-yellow-500/40 inline-flex items-center gap-2 font-mono font-black text-yellow-300 text-base">
                   <Zap className="w-5 h-5 text-yellow-400" />
                   {top3[0].score} XP
@@ -287,6 +385,17 @@ export default function LeaderboardPage() {
                   {top3[2].name}
                 </div>
                 <div className="text-xs text-slate-400 font-mono">{top3[2].department}</div>
+                <div className="mt-2 flex items-center justify-center">
+                  {top3[2].status === "completed" ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-400" /> COMPLETED
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400" /> LIVE • LVL {top3[2].current_level || 1}
+                    </span>
+                  )}
+                </div>
                 <div className="mt-3 py-1.5 px-3 rounded-xl bg-slate-950 border border-slate-800 inline-flex items-center gap-2 font-mono font-bold text-amber-300 text-sm">
                   <Zap className="w-4 h-4 text-amber-400" />
                   {top3[2].score} XP
@@ -336,20 +445,21 @@ export default function LeaderboardPage() {
             <table className="w-full text-left text-xs sm:text-sm">
               <thead className="bg-slate-950 text-[10px] font-mono uppercase text-slate-400 border-b border-slate-800">
                 <tr>
-                  <th className="py-3 px-4 w-16">Rank</th>
-                  <th className="py-3 px-4">Engineer / ID</th>
-                  <th className="py-3 px-4 hidden sm:table-cell">Department</th>
-                  <th className="py-3 px-4 text-right">Score (XP)</th>
+                  <th className="py-3 px-3 sm:px-4 w-12 sm:w-16">Rank</th>
+                  <th className="py-3 px-3 sm:px-4">Engineer / ID</th>
+                  <th className="py-3 px-3 sm:px-4">Status</th>
+                  <th className="py-3 px-4 hidden md:table-cell">Department</th>
+                  <th className="py-3 px-3 sm:px-4 text-right">Score (XP)</th>
                   <th className="py-3 px-4 text-right hidden sm:table-cell">Accuracy</th>
-                  <th className="py-3 px-4 text-right">Time</th>
+                  <th className="py-3 px-3 sm:px-4 text-right">Time</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 font-mono">
                 {filteredEntries.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center text-slate-500">
+                    <td colSpan={7} className="py-12 text-center text-slate-500">
                       {entries.length === 0
-                        ? "No completed missions recorded yet. Be the first to conquer MECH-MANIA!"
+                        ? "No registered engineers yet. Register now to enter MECH-MANIA 2026!"
                         : "No matching engineers found for this query."}
                     </td>
                   </tr>
@@ -367,15 +477,15 @@ export default function LeaderboardPage() {
                         }`}
                       >
                         {/* Rank */}
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-3 sm:px-4">
                           <span
                             className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${
                               entry.rank === 1
-                                ? "bg-yellow-500 text-black"
+                                ? "bg-yellow-500 text-black shadow-lg shadow-yellow-500/30"
                                 : entry.rank === 2
-                                ? "bg-slate-300 text-black"
+                                ? "bg-slate-300 text-black shadow-lg shadow-slate-300/20"
                                 : entry.rank === 3
-                                ? "bg-amber-700 text-white"
+                                ? "bg-amber-700 text-white shadow-lg shadow-amber-700/30"
                                 : "bg-slate-800 text-slate-400"
                             }`}
                           >
@@ -384,8 +494,8 @@ export default function LeaderboardPage() {
                         </td>
 
                         {/* Name & ID */}
-                        <td className="py-3 px-4 font-sans">
-                          <div className="font-bold text-slate-100 flex items-center gap-1.5">
+                        <td className="py-3 px-3 sm:px-4 font-sans">
+                          <div className="font-bold text-slate-100 flex items-center gap-1.5 flex-wrap">
                             <span>{entry.name}</span>
                             {isMe && (
                               <span className="px-1.5 py-0.2 rounded bg-amber-500 text-black text-[9px] font-mono font-black uppercase">
@@ -393,18 +503,42 @@ export default function LeaderboardPage() {
                               </span>
                             )}
                           </div>
-                          <span className="text-[10px] font-mono text-slate-400">
-                            {entry.participant_id}
-                          </span>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[10px] font-mono text-slate-400">
+                              {entry.participant_id}
+                            </span>
+                            <span className="text-[10px] font-mono text-slate-500 md:hidden">
+                              • {entry.department}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Status Column */}
+                        <td className="py-3 px-3 sm:px-4">
+                          {entry.status === "completed" ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 whitespace-nowrap">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                              COMPLETED
+                            </span>
+                          ) : entry.status === "in_progress" || entry.status === "playing" ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 border border-amber-500/40 text-amber-300 animate-pulse whitespace-nowrap">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                              LIVE • LVL {entry.current_level || 1}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-slate-800/80 border border-slate-700 text-slate-400 whitespace-nowrap">
+                              STANDBY
+                            </span>
+                          )}
                         </td>
 
                         {/* Department */}
-                        <td className="py-3 px-4 hidden sm:table-cell font-sans text-xs text-slate-300">
+                        <td className="py-3 px-4 hidden md:table-cell font-sans text-xs text-slate-300">
                           {entry.department} • {entry.year}
                         </td>
 
                         {/* XP */}
-                        <td className="py-3 px-4 text-right font-black text-amber-400 text-sm sm:text-base">
+                        <td className="py-3 px-3 sm:px-4 text-right font-black text-amber-400 text-sm sm:text-base">
                           {entry.score}
                         </td>
 
@@ -414,7 +548,7 @@ export default function LeaderboardPage() {
                         </td>
 
                         {/* Time */}
-                        <td className="py-3 px-4 text-right text-slate-400">
+                        <td className="py-3 px-3 sm:px-4 text-right text-slate-400">
                           {formatTime(entry.total_time)}
                         </td>
                       </tr>

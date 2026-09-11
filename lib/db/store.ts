@@ -416,181 +416,173 @@ export class GameStore {
     saveLocalState(state);
   }
 
-  // 4. Leaderboard Calculation
+  // 4. Leaderboard Calculation (Comprehensive: includes 100% of participants and attempts)
   static async getLeaderboard(): Promise<LeaderboardEntry[]> {
-    if (isSupabaseConfigured && supabaseServer) {
-      // 1. Try View first (if created by SETUP_LEADERBOARD_DATABASE.sql)
-      try {
-        const { data: viewData, error: viewErr } = await supabaseServer
-          .from("leaderboard_view")
-          .select("*")
-          .order("score", { ascending: false })
-          .order("accuracy", { ascending: false })
-          .order("total_time", { ascending: true })
-          .limit(200);
+    const localState = getLocalState();
 
-        if (!viewErr && viewData && viewData.length > 0) {
-          return viewData.map((item: any, index: number) => ({
-            rank: index + 1,
-            participant_id: item.participant_id || "MM2026-????",
-            name: item.name || "Anonymous Engineer",
-            department: item.department || "Mechanical",
-            year: item.year || "3rd",
-            score: Number(item.score) || 0,
-            accuracy: Number(item.accuracy) || 0,
-            total_time: Number(item.total_time) || 0,
-            completed_at: item.completed_at || new Date().toISOString(),
-          }));
+    // Dictionaries for participants and attempts
+    const participantsMap: Map<string, Participant> = new Map();
+    const attemptsMap: Map<string, Attempt> = new Map();
+
+    // 1. Seed with local state
+    if (localState.participants) {
+      for (const p of Object.values(localState.participants)) {
+        if (p) {
+          if (p.id) participantsMap.set(p.id, p);
+          if (p.participant_id) participantsMap.set(p.participant_id, p);
+          if (p.register_number) participantsMap.set(p.register_number.toUpperCase(), p);
         }
-      } catch (e) {
-        // leaderboard_view might not exist yet
       }
-
-      // 2. Direct query with participants join
-      try {
-        const { data: joinedData, error: joinErr } = await supabaseServer
-          .from("attempts")
-          .select(`
-            id,
-            score,
-            accuracy,
-            total_time,
-            status,
-            completed_at,
-            started_at,
-            current_question_index,
-            participant_id,
-            participants (
-              id,
-              participant_id,
-              name,
-              department,
-              year
-            )
-          `)
-          .order("score", { ascending: false })
-          .order("accuracy", { ascending: false })
-          .order("total_time", { ascending: true })
-          .limit(200);
-
-        if (!joinErr && joinedData && joinedData.length > 0) {
-          const filtered = joinedData.filter(
-            (item: any) => item.score > 0 || item.current_question_index > 0 || item.status === "completed"
-          );
-          const activeList = filtered.length > 0 ? filtered : joinedData;
-
-          return activeList.map((item: any, index: number) => {
-            const rawP = item.participants;
-            const p = Array.isArray(rawP) ? rawP[0] : rawP;
-            return {
-              rank: index + 1,
-              participant_id: p?.participant_id || "MM2026-????",
-              name: p?.name || "Anonymous Engineer",
-              department: p?.department || "Mechanical",
-              year: p?.year || "3rd",
-              score: Number(item.score) || 0,
-              accuracy: Number(item.accuracy) || 0,
-              total_time: Number(item.total_time) || 0,
-              completed_at: item.completed_at || item.started_at || new Date().toISOString(),
-            };
-          });
+    }
+    if (localState.attempts) {
+      for (const a of Object.values(localState.attempts)) {
+        if (a) {
+          if (a.id) attemptsMap.set(a.id, a);
+          if (a.participant_id) attemptsMap.set(a.participant_id, a);
         }
-      } catch (e) {
-        console.warn("Supabase joined query fallback:", e);
-      }
-
-      // 3. Resilient 2-step query: fetch attempts, then participants
-      try {
-        const { data: attemptsData, error: attErr } = await supabaseServer
-          .from("attempts")
-          .select("*")
-          .order("score", { ascending: false })
-          .order("accuracy", { ascending: false })
-          .order("total_time", { ascending: true })
-          .limit(200);
-
-        if (!attErr && attemptsData && attemptsData.length > 0) {
-          const participantIds = Array.from(new Set(attemptsData.map((a: any) => a.participant_id).filter(Boolean)));
-          const participantsMap: Record<string, any> = {};
-
-          if (participantIds.length > 0) {
-            const { data: partsData } = await supabaseServer
-              .from("participants")
-              .select("id, participant_id, name, department, year")
-              .in("id", participantIds);
-
-            if (partsData) {
-              partsData.forEach((p: any) => {
-                participantsMap[p.id] = p;
-                if (p.participant_id) {
-                  participantsMap[p.participant_id] = p;
-                }
-              });
-            }
-          }
-
-          const filtered = attemptsData.filter(
-            (item: any) => item.score > 0 || item.current_question_index > 0 || item.status === "completed"
-          );
-          const activeList = filtered.length > 0 ? filtered : attemptsData;
-
-          return activeList.map((att: any, index: number) => {
-            const p = participantsMap[att.participant_id] || {};
-            return {
-              rank: index + 1,
-              participant_id: p.participant_id || "MM2026-????",
-              name: p.name || "Anonymous Engineer",
-              department: p.department || "Mechanical",
-              year: p.year || "3rd",
-              score: Number(att.score) || 0,
-              accuracy: Number(att.accuracy) || 0,
-              total_time: Number(att.total_time) || 0,
-              completed_at: att.completed_at || att.started_at || new Date().toISOString(),
-            };
-          });
-        }
-      } catch (e) {
-        console.warn("Supabase 2-step query fallback:", e);
       }
     }
 
-    // 4. Local State Fallback
-    const state = getLocalState();
-    const allAttempts = Object.values(state.attempts).filter(Boolean);
-    const activeAttempts = allAttempts.filter(
-      (a) => a.status === "completed" || a.score > 0 || a.current_question_index > 0
-    );
-    const targetAttempts = activeAttempts.length > 0 ? activeAttempts : allAttempts;
+    // 2. Fetch from Supabase (if connected)
+    if (isSupabaseConfigured && supabaseServer) {
+      try {
+        const [pRes, aRes] = await Promise.all([
+          supabaseServer
+            .from("participants")
+            .select("*")
+            .order("created_at", { ascending: false }),
+          supabaseServer
+            .from("attempts")
+            .select("*")
+            .order("score", { ascending: false }),
+        ]);
 
-    targetAttempts.sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
-      return a.total_time - b.total_time;
+        if (!pRes.error && pRes.data) {
+          for (const p of pRes.data) {
+            if (p) {
+              if (p.id) participantsMap.set(p.id, p);
+              if (p.participant_id) participantsMap.set(p.participant_id, p);
+              if (p.register_number) participantsMap.set(p.register_number.toUpperCase(), p);
+            }
+          }
+        }
+
+        if (!aRes.error && aRes.data) {
+          for (const a of aRes.data) {
+            if (a) {
+              // If attempt already exists, keep the one with higher score or completed status
+              const existing =
+                (a.id && attemptsMap.get(a.id)) ||
+                (a.participant_id && attemptsMap.get(a.participant_id));
+
+              if (
+                !existing ||
+                Number(a.score || 0) > Number(existing.score || 0) ||
+                (a.status === "completed" && existing.status !== "completed")
+              ) {
+                if (a.id) attemptsMap.set(a.id, a);
+                if (a.participant_id) attemptsMap.set(a.participant_id, a);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Supabase getLeaderboard fetch exception:", e);
+      }
+    }
+
+    // 3. Deduplicate unique participants
+    const uniqueParticipants = new Map<string, Participant>();
+    participantsMap.forEach((p) => {
+      if (p.participant_id) {
+        uniqueParticipants.set(p.participant_id, p);
+      }
     });
 
-    return targetAttempts.map((att, index) => {
-      const p = (att.participant_id && state.participants[att.participant_id]) ||
-        Object.values(state.participants).find(
-          (item) => item.id === att.participant_id || item.participant_id === att.participant_id
-        ) || {
-          participant_id: "MM2026-????",
-          name: "Anonymous Engineer",
-          department: "Mechanical",
-          year: "3rd",
-        };
+    // 4. Build leaderboard entry for every participant
+    const entries: LeaderboardEntry[] = [];
+    const processedParticipantKeys = new Set<string>();
 
-      return {
-        rank: index + 1,
-        participant_id: p.participant_id || "MM2026-????",
+    uniqueParticipants.forEach((p, pId) => {
+      processedParticipantKeys.add(pId);
+      if (p.id) processedParticipantKeys.add(p.id);
+
+      // Match attempt by participant UUID or participant_id code
+      const att = attemptsMap.get(p.id) || attemptsMap.get(p.participant_id);
+
+      const score = att ? Number(att.score) || 0 : 0;
+      const accuracy = att ? Number(att.accuracy) || 0 : 0;
+      const total_time = att ? Number(att.total_time) || 0 : 0;
+      const status = att ? att.status || "in_progress" : "registered";
+      const current_level = att ? Number(att.current_level) || 1 : 1;
+      const current_question_index = att ? Number(att.current_question_index) || 0 : 0;
+      const completed_at =
+        att?.completed_at ||
+        att?.started_at ||
+        p.created_at ||
+        new Date().toISOString();
+
+      entries.push({
+        rank: 0,
+        participant_id: p.participant_id,
         name: p.name || "Anonymous Engineer",
         department: p.department || "Mechanical",
         year: p.year || "3rd",
-        score: Number(att.score) || 0,
-        accuracy: Number(att.accuracy) || 0,
-        total_time: Number(att.total_time) || 0,
-        completed_at: att.completed_at || att.started_at || new Date().toISOString(),
-      };
+        score,
+        accuracy,
+        total_time,
+        completed_at,
+        status,
+        current_level,
+        current_question_index,
+      });
     });
+
+    // 5. Also include any orphan attempts where participant record was missing
+    attemptsMap.forEach((att) => {
+      if (att && att.participant_id && !processedParticipantKeys.has(att.participant_id)) {
+        processedParticipantKeys.add(att.participant_id);
+        const isOfficialId = att.participant_id.startsWith("MM2026-");
+        entries.push({
+          rank: 0,
+          participant_id: isOfficialId ? att.participant_id : "MM2026-????",
+          name: "Anonymous Engineer",
+          department: "Mechanical",
+          year: "3rd",
+          score: Number(att.score) || 0,
+          accuracy: Number(att.accuracy) || 0,
+          total_time: Number(att.total_time) || 0,
+          completed_at: att.completed_at || att.started_at || new Date().toISOString(),
+          status: att.status || "in_progress",
+          current_level: Number(att.current_level) || 1,
+          current_question_index: Number(att.current_question_index) || 0,
+        });
+      }
+    });
+
+    // 6. Sort all entries:
+    // - Score DESC
+    // - Completed status before in_progress if tied
+    // - Accuracy DESC
+    // - Total time ASC (if > 0)
+    // - Completed/Created timestamp ASC
+    entries.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      const aComp = a.status === "completed" ? 1 : 0;
+      const bComp = b.status === "completed" ? 1 : 0;
+      if (bComp !== aComp) return bComp - aComp;
+      if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
+      if (a.total_time > 0 && b.total_time > 0 && a.total_time !== b.total_time) {
+        return a.total_time - b.total_time;
+      }
+      return new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime();
+    });
+
+    // 7. Assign 1-indexed Ranks
+    return entries.map((entry, index) => ({
+      ...entry,
+      rank: index + 1,
+    }));
   }
 
   // 5. Question Lookup (Immutable server-side source)

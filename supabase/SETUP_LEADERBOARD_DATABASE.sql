@@ -1,4 +1,4 @@
-﻿-- =========================================================================
+-- =========================================================================
 -- ⚙️ MECH-MANIA 2026: SUPABASE ONE-CLICK LEADERBOARD SETUP
 -- Run this in your Supabase Project -> SQL Editor -> Run
 -- This creates all required tables, disables RLS for smooth operation,
@@ -67,21 +67,29 @@ CREATE TABLE IF NOT EXISTS power_up_usage (
     used_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 5. LIVE LEADERBOARD VIEW (Shows every student who has played or completed)
+-- 5. LIVE LEADERBOARD VIEW (Shows EVERY registered engineer, their score, and live status)
 CREATE OR REPLACE VIEW leaderboard_view AS
 SELECT 
-    ROW_NUMBER() OVER (ORDER BY a.score DESC, a.accuracy DESC, a.total_time ASC) AS rank,
+    ROW_NUMBER() OVER (
+        ORDER BY 
+            COALESCE(a.score, 0) DESC, 
+            CASE WHEN a.status = 'completed' THEN 1 ELSE 0 END DESC,
+            COALESCE(a.accuracy, 0) DESC, 
+            COALESCE(a.total_time, 999999) ASC,
+            p.created_at ASC
+    ) AS rank,
     p.participant_id,
     p.name,
     p.department,
     p.year,
-    a.score,
-    a.accuracy,
-    a.total_time,
-    COALESCE(a.completed_at, a.started_at) AS completed_at
-FROM attempts a
-JOIN participants p ON a.participant_id = p.id
-WHERE a.status = 'completed' OR a.score > 0 OR a.current_question_index > 0;
+    COALESCE(a.score, 0) AS score,
+    COALESCE(a.accuracy, 0) AS accuracy,
+    COALESCE(a.total_time, 0) AS total_time,
+    COALESCE(a.status, 'registered') AS status,
+    COALESCE(a.current_level, 1) AS current_level,
+    COALESCE(a.completed_at, a.started_at, p.created_at) AS completed_at
+FROM participants p
+LEFT JOIN attempts a ON a.participant_id = p.id;
 
 -- 6. DISABLE RLS FOR ZERO-PERMISSION ERRORS
 ALTER TABLE participants DISABLE ROW LEVEL SECURITY;
